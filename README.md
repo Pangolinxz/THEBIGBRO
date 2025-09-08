@@ -1,4 +1,4 @@
-# 📘 Proyecto de Ingeniería de Software  
+# 📘 The Big Bro -- Proyecto de Ingeniería de Software  
 
 Este repositorio corresponde al proyecto desarrollado en el curso de **Ingeniería de Software**.  
 Actualmente está en construcción, y aquí iremos documentando los avances, especificaciones y entregables.  
