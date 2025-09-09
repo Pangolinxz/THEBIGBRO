@@ -9,7 +9,7 @@ Actualmente está en construcción, y aquí iremos documentando los avances, esp
 
 - **CORTÉS DUQUE JACOBO ULISES** – [@jacoboCortes789](https://github.com/jacoboCortes789)  
 - **JEREZ GARCÍA TOMÁS NICOLÁS** – [@TomasJerezG](https://github.com/TomasJerezG)  
-- **GONZALES LARA GABRIEL MATEO** – [@Pangolinxz](https://github.com/Pangolinxz)  
+- **GONZALEZ LARA GABRIEL MATEO** – [@Pangolinxz](https://github.com/Pangolinxz)  
 - **ZAMORA GARZÓN SANTIAGO** – [@santicrak2017](https://github.com/santicrak2017)  
 
 ---
