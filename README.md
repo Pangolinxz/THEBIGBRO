@@ -5,7 +5,7 @@ Actualmente está en construcción, y aquí iremos documentando los avances, esp
 
 ---
 
-## 👥 Equipo de trabajo: **The Big Bro**  
+## 👥 Equipo de trabajo: **The Big Bro**  .
 
 - **CORTÉS DUQUE JACOBO ULISES** – [@jacoboCortes789](https://github.com/jacoboCortes789)  
 - **JEREZ GARCÍA TOMÁS NICOLÁS** – [@TomasJerezG](https://github.com/TomasJerezG)  
