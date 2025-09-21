@@ -15,6 +15,7 @@ Actualmente está en construcción, y aquí iremos documentando los avances, esp
 ---
 
 ## 📌 Proyecto **LogiTrace** 
+<img width="1024" height="1024" alt="image" src="https://github.com/user-attachments/assets/9f13bc31-a5f5-4f10-9c18-97368da21134" />
 
 LogiTrace es un Sistema de Gestión de Almacén (WMS) orientado a brindar seguimiento y trazabilidad en tiempo real a cada movimiento de inventario dentro de la bodega. Su objetivo es controlar entradas, salidas, transferencias y pedidos con registros auditados, alertas inteligentes y tableros de indicadores que ofrecen una visión clara y confiable de la operación.
 
