@@ -14,15 +14,11 @@ Actualmente está en construcción, y aquí iremos documentando los avances, esp
 
 ---
 
-## 📌 Estado actual: **LogiTrace** 
-🔹 Proyecto en etapa inicial.  
+## 📌 Proyecto **LogiTrace** 
 
----
+LogiTrace es un Sistema de Gestión de Almacén (WMS) orientado a brindar seguimiento y trazabilidad en tiempo real a cada movimiento de inventario dentro de la bodega. Su objetivo es controlar entradas, salidas, transferencias y pedidos con registros auditados, alertas inteligentes y tableros de indicadores que ofrecen una visión clara y confiable de la operación.
 
-## 🚀 Próximos pasos  
-- Definir alcance y objetivos.  
-- Documentar requerimientos.  
-- Establecer estructura del proyecto.  
+A diferencia de soluciones tradicionales, LogiTrace prioriza la transparencia y el control: cada producto se rastrea desde su ingreso hasta su salida, cada acción queda asociada a un usuario y cada decisión se respalda en datos actualizados. Con ello, se reduce el riesgo de errores, se optimiza la gestión y se asegura que la información siempre esté disponible para tomar decisiones precisas y oportunas.
 
 ---
 ✨ *Equipo The Big Bro – Ingeniería de Software*  
