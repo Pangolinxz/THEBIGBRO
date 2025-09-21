@@ -14,7 +14,7 @@ Actualmente está en construcción, y aquí iremos documentando los avances, esp
 
 ---
 
-## 📌 Estado actual  
+## 📌 Estado actual: **LogiTrace** 
 🔹 Proyecto en etapa inicial.  
 
 ---
