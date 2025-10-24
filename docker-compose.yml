@@ -1,4 +1,23 @@
+version: '3.8'
+
 services:
+  web:
+    build:
+      context: ./proyecto        
+      dockerfile: Dockerfile
+    container_name: logitrace-web
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./proyecto:/app          
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./proyecto/.env          
+    depends_on:
+      db:
+        condition: service_healthy  
+    restart: unless-stopped
+
   db:
     image: mysql:8.0
     container_name: logitrace-db
@@ -22,3 +41,4 @@ services:
 
 volumes:
   db_data:
+
