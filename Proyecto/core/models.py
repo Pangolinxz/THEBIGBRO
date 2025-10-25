@@ -1,5 +1,13 @@
 from django.db import models
 
+
+class ProductCategory(models.TextChoices):
+    STANDARD = "standard", "Producto estandar"
+    PERISHABLE = "perishable", "Perecedero"
+    FRAGILE = "fragile", "Fragil"
+    BULK = "bulk", "Voluminoso"
+    HAZARDOUS = "hazardous", "Peligroso"
+
 class Rol(models.Model):
     name = models.CharField(max_length=255, unique=True)
     class Meta:
@@ -22,10 +30,15 @@ class Product(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     reorder_point = models.IntegerField(default=0)
+    category = models.CharField(
+        max_length=32,
+        choices=ProductCategory.choices,
+        default=ProductCategory.STANDARD,
+    )
     class Meta:
         db_table = 'product'
     def __str__(self):
-        return f"{self.sku} - {self.name}"
+        return f"{self.sku} - {self.name} ({self.get_category_display()})"
 
 class Location(models.Model):
     code = models.CharField(max_length=255, unique=True)
