@@ -25,9 +25,9 @@ services:
   web:
     build:
       context: .
-      dockerfile: projecto/Dockerfile
+      dockerfile: Proyecto/Dockerfile
     container_name: logitrace-web
-    command: python projecto/manage.py runserver 0.0.0.0:8000
+    command: python Proyecto/manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
     ports:
@@ -35,7 +35,8 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
 volumes:
   db_data:
