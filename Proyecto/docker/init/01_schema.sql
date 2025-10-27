@@ -16,7 +16,8 @@ CREATE TABLE `product` (
   `sku` VARCHAR(255) UNIQUE,
   `name` VARCHAR(255),
   `description` TEXT,
-  `reorder_point` INT
+  `reorder_point` INT,
+  `category` VARCHAR(32) NOT NULL DEFAULT 'standard'
 );
 
 CREATE TABLE `location` (
