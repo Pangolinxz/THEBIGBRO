@@ -9,6 +9,7 @@ from django.views.decorators.http import require_http_methods
 
 from core.models import (
     Inventory,
+    InventoryAudit,
     InventoryTransaction,
     Location,
     Order,
@@ -30,6 +31,11 @@ from domain.services.product_factory_service import (
     build_blueprint_from_payload,
     persist_product_from_blueprint,
 )
+from domain.services.inventory_ingress import (
+    IngressError,
+    list_ingress_records,
+    register_product_ingress,
+)
 
 MODEL_REGISTRY = {
     "roles": Rol,
@@ -38,6 +44,7 @@ MODEL_REGISTRY = {
     "locations": Location,
     "inventories": Inventory,
     "inventory-transactions": InventoryTransaction,
+    "inventory-audits": InventoryAudit,
     "orders": Order,
     "order-items": OrderItem,
     "stock-alerts": StockAlert,
@@ -137,6 +144,24 @@ def _serialize_adjustment_request(instance: StockAdjustmentRequest) -> Dict[str,
     }
 
 
+def _serialize_inventory_audit(instance: InventoryAudit) -> Dict[str, Any]:
+    return {
+        "id": instance.id,
+        "product_id": instance.product_id,
+        "product_sku": instance.product.sku,
+        "product_name": instance.product.name,
+        "location_id": instance.location_id,
+        "location_code": instance.location.code,
+        "user": instance.user.username if instance.user else None,
+        "movement_type": instance.movement_type,
+        "quantity": instance.quantity,
+        "previous_stock": instance.previous_stock,
+        "new_stock": instance.new_stock,
+        "observations": instance.observations or None,
+        "created_at": instance.created_at.isoformat() if instance.created_at else None,
+    }
+
+
 def _get_model(model_key: str):
     model = MODEL_REGISTRY.get(model_key)
     if not model:
@@ -216,7 +241,56 @@ def crud_resource(request, model_key: str, pk: int):
                 },
                 status=409,
             )
-        return JsonResponse({}, status=204)
+    return JsonResponse({}, status=204)
+
+    return JsonResponse({"error": f"Metodo {request.method} no permitido"}, status=405)
+
+
+@csrf_exempt
+def inventory_ingress(request):
+    if request.method == "GET":
+        limit_param = request.GET.get("limit")
+        limit = 50
+        if limit_param:
+            try:
+                limit = max(int(limit_param), 1)
+            except ValueError:
+                return JsonResponse({"error": "El parametro limit debe ser entero positivo"}, status=400)
+        audits = list_ingress_records(limit=limit)
+        items = [_serialize_inventory_audit(audit) for audit in audits]
+        return JsonResponse({"items": items, "count": len(items)}, status=200)
+
+    if request.method == "POST":
+        try:
+            payload = json.loads(request.body or "{}")
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "JSON invalido"}, status=400)
+
+        try:
+            result = register_product_ingress(payload, created_by=None)  # TODO auth
+        except IngressError as exc:
+            return JsonResponse({"error": str(exc)}, status=400)
+
+        response_payload = {
+            "audit": _serialize_inventory_audit(result.audit),
+            "inventory": {
+                "product_id": result.inventory.product_id,
+                "location_id": result.inventory.location_id,
+                "quantity": result.inventory.quantity,
+                "updated_at": result.inventory.updated_at.isoformat()
+                if result.inventory.updated_at
+                else None,
+            },
+            "transaction": {
+                "id": result.transaction.id,
+                "type": result.transaction.type,
+                "quantity": result.transaction.quantity,
+                "created_at": result.transaction.created_at.isoformat()
+                if result.transaction.created_at
+                else None,
+            },
+        }
+        return JsonResponse(response_payload, status=201)
 
     return JsonResponse({"error": f"Metodo {request.method} no permitido"}, status=405)
 

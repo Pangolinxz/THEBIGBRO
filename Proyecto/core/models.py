@@ -121,3 +121,30 @@ class StockAdjustmentRequest(models.Model):
 
     def __str__(self):
         return f"Adjustment {self.id} - {self.product.sku} ({self.status})"
+
+
+class InventoryAudit(models.Model):
+    MOVEMENT_INGRESS = "ingreso"
+    MOVEMENT_EGRESS = "egreso"
+
+    MOVEMENT_CHOICES = (
+        (MOVEMENT_INGRESS, "Ingreso"),
+        (MOVEMENT_EGRESS, "Egreso"),
+    )
+
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    location = models.ForeignKey(Location, on_delete=models.PROTECT)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    movement_type = models.CharField(max_length=20, choices=MOVEMENT_CHOICES)
+    quantity = models.PositiveIntegerField()
+    previous_stock = models.IntegerField()
+    new_stock = models.IntegerField()
+    observations = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'inventory_audit'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.movement_type} {self.quantity} {self.product.sku} @ {self.location.code}"

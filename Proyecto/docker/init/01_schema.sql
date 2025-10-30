@@ -44,6 +44,19 @@ CREATE TABLE `inventory_transaction` (
   `created_at` DATETIME
 );
 
+CREATE TABLE `inventory_audit` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `product_id` INT NOT NULL,
+  `location_id` INT NOT NULL,
+  `user_id` INT,
+  `movement_type` VARCHAR(20) NOT NULL,
+  `quantity` INT NOT NULL,
+  `previous_stock` INT NOT NULL,
+  `new_stock` INT NOT NULL,
+  `observations` TEXT,
+  `created_at` DATETIME NOT NULL
+);
+
 CREATE TABLE `order` (
   `id` INT PRIMARY KEY AUTO_INCREMENT,
   `seller_id` INT,
@@ -89,6 +102,9 @@ ALTER TABLE `inventory` ADD FOREIGN KEY (`location_id`) REFERENCES `location` (`
 ALTER TABLE `inventory_transaction` ADD FOREIGN KEY (`product_id`) REFERENCES `product` (`id`);
 ALTER TABLE `inventory_transaction` ADD FOREIGN KEY (`location_id`) REFERENCES `location` (`id`);
 ALTER TABLE `inventory_transaction` ADD FOREIGN KEY (`user_id`) REFERENCES `user` (`id`);
+ALTER TABLE `inventory_audit` ADD FOREIGN KEY (`product_id`) REFERENCES `product` (`id`);
+ALTER TABLE `inventory_audit` ADD FOREIGN KEY (`location_id`) REFERENCES `location` (`id`);
+ALTER TABLE `inventory_audit` ADD FOREIGN KEY (`user_id`) REFERENCES `user` (`id`);
 ALTER TABLE `order` ADD FOREIGN KEY (`seller_id`) REFERENCES `user` (`id`);
 ALTER TABLE `order_item` ADD FOREIGN KEY (`order_id`) REFERENCES `order` (`id`);
 ALTER TABLE `order_item` ADD FOREIGN KEY (`product_id`) REFERENCES `product` (`id`);
