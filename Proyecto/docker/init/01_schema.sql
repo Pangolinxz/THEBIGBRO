@@ -66,6 +66,21 @@ CREATE TABLE `stock_alert` (
   `message` TEXT
 );
 
+CREATE TABLE `stock_adjustment_request` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `product_id` INT NOT NULL,
+  `location_id` INT NOT NULL,
+  `system_quantity` INT NOT NULL,
+  `physical_quantity` INT NOT NULL,
+  `delta` INT NOT NULL,
+  `reason` TEXT NOT NULL,
+  `attachment_url` TEXT,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'pending',
+  `flagged` BOOLEAN DEFAULT FALSE,
+  `created_by_id` INT,
+  `created_at` DATETIME NOT NULL
+);
+
 CREATE UNIQUE INDEX `inventory_index_0` ON `inventory` (`product_id`, `location_id`);
 
 ALTER TABLE `user` ADD FOREIGN KEY (`role_id`) REFERENCES `rol` (`id`);
@@ -78,3 +93,6 @@ ALTER TABLE `order` ADD FOREIGN KEY (`seller_id`) REFERENCES `user` (`id`);
 ALTER TABLE `order_item` ADD FOREIGN KEY (`order_id`) REFERENCES `order` (`id`);
 ALTER TABLE `order_item` ADD FOREIGN KEY (`product_id`) REFERENCES `product` (`id`);
 ALTER TABLE `stock_alert` ADD FOREIGN KEY (`product_id`) REFERENCES `product` (`id`);
+ALTER TABLE `stock_adjustment_request` ADD FOREIGN KEY (`product_id`) REFERENCES `product` (`id`);
+ALTER TABLE `stock_adjustment_request` ADD FOREIGN KEY (`location_id`) REFERENCES `location` (`id`);
+ALTER TABLE `stock_adjustment_request` ADD FOREIGN KEY (`created_by_id`) REFERENCES `user` (`id`);

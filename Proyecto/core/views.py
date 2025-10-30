@@ -3,6 +3,7 @@ from datetime import date, datetime, time
 from typing import Any, Dict, List, Optional, Tuple
 
 from django.http import JsonResponse
+from django.db.models.deletion import ProtectedError
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -15,7 +16,14 @@ from core.models import (
     Product,
     Rol,
     StockAlert,
+    StockAdjustmentRequest,
     User,
+)
+from domain.services.adjustments import (
+    AdjustmentRequestError,
+    create_adjustment_request,
+    get_adjustment_request,
+    list_adjustment_requests,
 )
 from domain.services.database_health import database_health_summary
 from domain.services.product_factory_service import (
@@ -109,6 +117,26 @@ def _clean_payload(model, payload: Dict[str, Any]) -> Tuple[Dict[str, Any], Opti
     return cleaned, None
 
 
+def _serialize_adjustment_request(instance: StockAdjustmentRequest) -> Dict[str, Any]:
+    return {
+        "id": instance.id,
+        "product_id": instance.product_id,
+        "product_sku": instance.product.sku,
+        "product_name": instance.product.name,
+        "location_id": instance.location_id,
+        "location_code": instance.location.code,
+        "system_quantity": instance.system_quantity,
+        "physical_quantity": instance.physical_quantity,
+        "delta": instance.delta,
+        "flagged": instance.flagged,
+        "status": instance.status,
+        "reason": instance.reason,
+        "attachment_url": instance.attachment_url or None,
+        "created_by": instance.created_by.username if instance.created_by else None,
+        "created_at": instance.created_at.isoformat() if instance.created_at else None,
+    }
+
+
 def _get_model(model_key: str):
     model = MODEL_REGISTRY.get(model_key)
     if not model:
@@ -177,7 +205,53 @@ def crud_resource(request, model_key: str, pk: int):
         return JsonResponse(_serialize_instance(instance), status=200)
 
     if request.method == "DELETE":
-        instance.delete()
+        try:
+            instance.delete()
+        except ProtectedError as exc:
+            references = [str(obj) for obj in exc.protected_objects]
+            return JsonResponse(
+                {
+                    "error": "No se puede eliminar porque existen referencias protegidas.",
+                    "references": references,
+                },
+                status=409,
+            )
         return JsonResponse({}, status=204)
 
     return JsonResponse({"error": f"Metodo {request.method} no permitido"}, status=405)
+
+
+@csrf_exempt
+def adjustment_requests(request):
+    if request.method == "GET":
+        queryset = list_adjustment_requests(request.GET)
+        items = [_serialize_adjustment_request(instance) for instance in queryset]
+        return JsonResponse({"items": items, "count": len(items)}, status=200)
+
+    if request.method == "POST":
+        try:
+            payload = json.loads(request.body or "{}")
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "JSON invalido"}, status=400)
+
+        try:
+            adjustment = create_adjustment_request(payload, created_by=None)  # TODO auth
+        except AdjustmentRequestError as exc:
+            return JsonResponse({"error": str(exc)}, status=400)
+
+        return JsonResponse(_serialize_adjustment_request(adjustment), status=201)
+
+    return JsonResponse({"error": f"Metodo {request.method} no permitido"}, status=405)
+
+
+@csrf_exempt
+def adjustment_request_detail(request, pk: int):
+    try:
+        adjustment = get_adjustment_request(pk)
+    except StockAdjustmentRequest.DoesNotExist:
+        return JsonResponse({"error": f"Solicitud {pk} no encontrada"}, status=404)
+
+    if request.method == "GET":
+        return JsonResponse(_serialize_adjustment_request(adjustment), status=200)
+
+    return JsonResponse({"error": "Operacion no implementada. TODO auth/approval"}, status=405)

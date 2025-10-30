@@ -8,6 +8,12 @@ class ProductCategory(models.TextChoices):
     BULK = "bulk", "Voluminoso"
     HAZARDOUS = "hazardous", "Peligroso"
 
+
+class StockAdjustmentStatus(models.TextChoices):
+    PENDING = "pending", "Pendiente"
+    APPROVED = "approved", "Aprobado"
+    REJECTED = "rejected", "Rechazado"
+
 class Rol(models.Model):
     name = models.CharField(max_length=255, unique=True)
     class Meta:
@@ -90,3 +96,28 @@ class StockAlert(models.Model):
     message = models.TextField(blank=True)
     class Meta:
         db_table = 'stock_alert'
+
+
+class StockAdjustmentRequest(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    location = models.ForeignKey(Location, on_delete=models.PROTECT)
+    system_quantity = models.IntegerField()
+    physical_quantity = models.IntegerField()
+    delta = models.IntegerField()
+    reason = models.TextField()
+    attachment_url = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=32,
+        choices=StockAdjustmentStatus.choices,
+        default=StockAdjustmentStatus.PENDING,
+    )
+    flagged = models.BooleanField(default=False)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'stock_adjustment_request'
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Adjustment {self.id} - {self.product.sku} ({self.status})"
