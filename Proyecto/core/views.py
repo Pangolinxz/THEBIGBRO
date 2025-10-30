@@ -1,14 +1,39 @@
 import json
+from datetime import date, datetime, time
+from typing import Any, Dict, List, Optional, Tuple
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from core.models import (
+    Inventory,
+    InventoryTransaction,
+    Location,
+    Order,
+    OrderItem,
+    Product,
+    Rol,
+    StockAlert,
+    User,
+)
 from domain.services.database_health import database_health_summary
 from domain.services.product_factory_service import (
     build_blueprint_from_payload,
     persist_product_from_blueprint,
 )
+
+MODEL_REGISTRY = {
+    "roles": Rol,
+    "users": User,
+    "products": Product,
+    "locations": Location,
+    "inventories": Inventory,
+    "inventory-transactions": InventoryTransaction,
+    "orders": Order,
+    "order-items": OrderItem,
+    "stock-alerts": StockAlert,
+}
 
 
 def database_health(_request):
@@ -45,3 +70,114 @@ def product_factory(request):
         return JsonResponse(response_data, status=201)
 
     return JsonResponse(response_data, status=200)
+
+
+def _serialize_value(value: Any) -> Any:
+    if isinstance(value, (datetime, date, time)):
+        return value.isoformat()
+    return value
+
+
+def _serialize_instance(instance) -> Dict[str, Any]:
+    data: Dict[str, Any] = {}
+    for field in instance._meta.concrete_fields:
+        if field.auto_created:
+            continue
+        if field.is_relation and field.many_to_one:
+            raw_value = getattr(instance, field.attname)
+            related = getattr(instance, field.name)
+            data[field.name] = raw_value
+            data[f"{field.name}_display"] = str(related) if related else None
+        else:
+            data[field.name] = _serialize_value(getattr(instance, field.name))
+    data["id"] = getattr(instance, "id", None)
+    return data
+
+
+def _clean_payload(model, payload: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str]]:
+    cleaned: Dict[str, Any] = {}
+    for field in model._meta.concrete_fields:
+        if field.auto_created or field.primary_key:
+            continue
+        key = field.attname if field.is_relation and field.many_to_one else field.name
+        if key in payload:
+            raw_value = payload[key]
+            try:
+                cleaned[key] = field.get_prep_value(raw_value)
+            except Exception as exc:  # pragma: no cover - defensive
+                return {}, f"Valor invalido para {key}: {exc}"
+    return cleaned, None
+
+
+def _get_model(model_key: str):
+    model = MODEL_REGISTRY.get(model_key)
+    if not model:
+        return None, JsonResponse({"error": f"Modelo '{model_key}' no soportado"}, status=404)
+    return model, None
+
+
+@csrf_exempt
+def crud_collection(request, model_key: str):
+    model, error_response = _get_model(model_key)
+    if error_response:
+        return error_response
+
+    if request.method == "GET":
+        items = [_serialize_instance(instance) for instance in model.objects.all().order_by("id")]
+        return JsonResponse({"items": items, "count": len(items)}, status=200)
+
+    if request.method == "POST":
+        try:
+            payload = json.loads(request.body or "{}")
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "JSON invalido"}, status=400)
+
+        cleaned, error = _clean_payload(model, payload)
+        if error:
+            return JsonResponse({"error": error}, status=400)
+        try:
+            instance = model.objects.create(**cleaned)
+        except Exception as exc:  # pragma: no cover - depende del driver
+            return JsonResponse({"error": f"No se pudo crear el registro: {exc}"}, status=400)
+        return JsonResponse(_serialize_instance(instance), status=201)
+
+    return JsonResponse({"error": f"Metodo {request.method} no permitido"}, status=405)
+
+
+@csrf_exempt
+def crud_resource(request, model_key: str, pk: int):
+    model, error_response = _get_model(model_key)
+    if error_response:
+        return error_response
+
+    try:
+        instance = model.objects.get(pk=pk)
+    except model.DoesNotExist:
+        return JsonResponse({"error": f"Registro {pk} no encontrado"}, status=404)
+
+    if request.method == "GET":
+        return JsonResponse(_serialize_instance(instance), status=200)
+
+    if request.method in {"PUT", "PATCH"}:
+        try:
+            payload = json.loads(request.body or "{}")
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "JSON invalido"}, status=400)
+
+        cleaned, error = _clean_payload(model, payload)
+        if error:
+            return JsonResponse({"error": error}, status=400)
+
+        for key, value in cleaned.items():
+            setattr(instance, key, value)
+        try:
+            instance.save()
+        except Exception as exc:  # pragma: no cover - depende del driver
+            return JsonResponse({"error": f"No se pudo actualizar el registro: {exc}"}, status=400)
+        return JsonResponse(_serialize_instance(instance), status=200)
+
+    if request.method == "DELETE":
+        instance.delete()
+        return JsonResponse({}, status=204)
+
+    return JsonResponse({"error": f"Metodo {request.method} no permitido"}, status=405)
