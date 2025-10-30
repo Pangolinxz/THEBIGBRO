@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from django.db.models.deletion import ProtectedError
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.contrib.auth import authenticate, login, logout
 
 from core.models import (
     Inventory,
@@ -329,3 +330,21 @@ def adjustment_request_detail(request, pk: int):
         return JsonResponse(_serialize_adjustment_request(adjustment), status=200)
 
     return JsonResponse({"error": "Operacion no implementada. TODO auth/approval"}, status=405)
+@csrf_exempt
+def login_view(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            return JsonResponse({'message': 'Login exitoso'})
+        else:
+            return JsonResponse({'error': 'Credenciales inválidas'}, status=400)
+    return JsonResponse({'error': 'Método no permitido'}, status=405)
+
+@csrf_exempt
+def logout_view(request):
+    logout(request)
+    return JsonResponse({'message': 'Sesión cerrada correctamente'})

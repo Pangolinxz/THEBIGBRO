@@ -1,5 +1,5 @@
 from django.db import models
-
+from django.contrib.auth.models import AbstractUser
 
 class ProductCategory(models.TextChoices):
     STANDARD = "standard", "Producto estandar"
@@ -21,11 +21,12 @@ class Rol(models.Model):
     def __str__(self):
         return self.name
 
-class User(models.Model):
+class User(AbstractUser):
     username = models.CharField(max_length=255, unique=True)
     full_name = models.CharField(max_length=255, blank=True, null=True)
     email = models.CharField(max_length=255, unique=True)
     role = models.ForeignKey(Rol, null=True, blank=True, on_delete=models.SET_NULL)
+    password = models.CharField(max_length=128, blank=True) 
     class Meta:
         db_table = 'user'
     def __str__(self):
@@ -76,7 +77,7 @@ class InventoryTransaction(models.Model):
         db_table = 'inventory_transaction'
 
 class Order(models.Model):
-    seller = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    seller_id = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     status = models.CharField(max_length=255)
     created_at = models.DateTimeField()
     class Meta:

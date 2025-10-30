@@ -5,10 +5,19 @@ CREATE TABLE `rol` (
 
 CREATE TABLE `user` (
   `id` INT PRIMARY KEY AUTO_INCREMENT,
-  `username` VARCHAR(255) UNIQUE,
-  `full_name` VARCHAR(255),
-  `email` VARCHAR(255) UNIQUE,
-  `role_id` INT
+  `password` VARCHAR(128) NOT NULL,
+  `last_login` DATETIME DEFAULT NULL,
+  `is_superuser` BOOLEAN NOT NULL DEFAULT FALSE,
+  `username` VARCHAR(150) UNIQUE NOT NULL,
+  `first_name` VARCHAR(150) DEFAULT '',
+  `last_name` VARCHAR(150) DEFAULT '',
+  `email` VARCHAR(254) UNIQUE,
+  `is_staff` BOOLEAN NOT NULL DEFAULT FALSE,
+  `is_active` BOOLEAN NOT NULL DEFAULT TRUE,
+  `date_joined` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `full_name` VARCHAR(150),
+  `role_id` INT,
+  CONSTRAINT `fk_user_role` FOREIGN KEY (`role_id`) REFERENCES `rol` (`id`)
 );
 
 CREATE TABLE `product` (
@@ -92,6 +101,34 @@ CREATE TABLE `stock_adjustment_request` (
   `flagged` BOOLEAN DEFAULT FALSE,
   `created_by_id` INT,
   `created_at` DATETIME NOT NULL
+);
+
+CREATE TABLE `inventory_audit` (
+  `id` INT PRIMARY KEY AUTO_INCREMENT,
+  `product_id` INT NOT NULL,
+  `location_id` INT NOT NULL,
+  `user_id` INT,
+  `movement_type` VARCHAR(20) NOT NULL,
+  `quantity` INT UNSIGNED NOT NULL,
+  `previous_stock` INT NOT NULL,
+  `new_stock` INT NOT NULL,
+  `observations` TEXT,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  CONSTRAINT `fk_inventory_audit_product`
+    FOREIGN KEY (`product_id`) REFERENCES `product`(`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+
+  CONSTRAINT `fk_inventory_audit_location`
+    FOREIGN KEY (`location_id`) REFERENCES `location`(`id`)
+    ON DELETE RESTRICT ON UPDATE CASCADE,
+
+  CONSTRAINT `fk_inventory_audit_user`
+    FOREIGN KEY (`user_id`) REFERENCES `user`(`id`)
+    ON DELETE SET NULL ON UPDATE CASCADE,
+
+  CONSTRAINT `chk_inventory_audit_movement_type`
+    CHECK (`movement_type` IN ('ingreso', 'egreso'))
 );
 
 CREATE UNIQUE INDEX `inventory_index_0` ON `inventory` (`product_id`, `location_id`);
