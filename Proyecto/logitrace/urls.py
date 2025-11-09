@@ -11,6 +11,12 @@ urlpatterns = [
     path('inventory/ingress/', views.inventory_ingress, name='inventory-ingress'),
     path('inventory/adjustments/', views.adjustment_requests, name='adjustment-requests'),
     path('inventory/adjustments/<int:pk>/', views.adjustment_request_detail, name='adjustment-request-detail'),
+    path('inventory/adjustments/<int:pk>/approve/', views.adjustment_approve, name='adjustment-approve'),
+    path('inventory/adjustments/<int:pk>/reject/', views.adjustment_reject, name='adjustment-reject'),
+    path('transfers/internal/pending/', views.internal_transfers_pending, name='internal-transfers-pending'),
+    path('transfers/internal/<int:pk>/', views.internal_transfer_detail, name='internal-transfer-detail'),
+    path('transfers/internal/<int:pk>/approve/', views.internal_transfer_approve, name='internal-transfer-approve'),
+    path('transfers/internal/<int:pk>/reject/', views.internal_transfer_reject, name='internal-transfer-reject'),
     path('api/<slug:model_key>/', views.crud_collection, name='crud-collection'),
     path('api/<slug:model_key>/<int:pk>/', views.crud_resource, name='crud-resource'),
 ]

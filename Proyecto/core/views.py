@@ -19,13 +19,24 @@ from core.models import (
     Rol,
     StockAlert,
     StockAdjustmentRequest,
+    InternalTransfer,
+    TransferStatus,
     User,
 )
 from domain.services.adjustments import (
     AdjustmentRequestError,
+    approve_adjustment,
     create_adjustment_request,
     get_adjustment_request,
     list_adjustment_requests,
+    reject_adjustment,
+)
+from domain.services.transfers import (
+    TransferRequestError,
+    approve_transfer,
+    reject_transfer,
+    get_internal_transfer,
+    list_internal_transfers,
 )
 from domain.services.database_health import database_health_summary
 from domain.services.product_factory_service import (
@@ -49,6 +60,7 @@ MODEL_REGISTRY = {
     "orders": Order,
     "order-items": OrderItem,
     "stock-alerts": StockAlert,
+    "internal-transfers": InternalTransfer,
 }
 
 
@@ -142,6 +154,9 @@ def _serialize_adjustment_request(instance: StockAdjustmentRequest) -> Dict[str,
         "attachment_url": instance.attachment_url or None,
         "created_by": instance.created_by.username if instance.created_by else None,
         "created_at": instance.created_at.isoformat() if instance.created_at else None,
+        "processed_by": instance.processed_by.username if instance.processed_by else None,
+        "processed_at": instance.processed_at.isoformat() if instance.processed_at else None,
+        "resolution_comment": instance.resolution_comment or None,
     }
 
 
@@ -160,6 +175,26 @@ def _serialize_inventory_audit(instance: InventoryAudit) -> Dict[str, Any]:
         "new_stock": instance.new_stock,
         "observations": instance.observations or None,
         "created_at": instance.created_at.isoformat() if instance.created_at else None,
+    }
+
+
+def _serialize_internal_transfer(instance: InternalTransfer) -> Dict[str, Any]:
+    return {
+        "id": instance.id,
+        "product_id": instance.product_id,
+        "product_sku": instance.product.sku,
+        "quantity": instance.quantity,
+        "origin_location_id": instance.origin_location_id,
+        "origin_location_code": instance.origin_location.code,
+        "destination_location_id": instance.destination_location_id,
+        "destination_location_code": instance.destination_location.code,
+        "reason": instance.reason,
+        "status": instance.status,
+        "created_by": instance.created_by.username if instance.created_by else None,
+        "created_at": instance.created_at.isoformat() if instance.created_at else None,
+        "processed_by": instance.processed_by.username if instance.processed_by else None,
+        "processed_at": instance.processed_at.isoformat() if instance.processed_at else None,
+        "resolution_comment": instance.resolution_comment or None,
     }
 
 
@@ -330,6 +365,110 @@ def adjustment_request_detail(request, pk: int):
         return JsonResponse(_serialize_adjustment_request(adjustment), status=200)
 
     return JsonResponse({"error": "Operacion no implementada. TODO auth/approval"}, status=405)
+
+
+@csrf_exempt
+@require_http_methods(["PATCH"])
+def adjustment_approve(request, pk: int):
+    try:
+        payload = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "JSON invalido"}, status=400)
+
+    comment = str(payload.get("comment") or "").strip()
+    try:
+        adjustment = approve_adjustment(pk, supervisor_user=None, comment=comment)  # TODO auth
+    except StockAdjustmentRequest.DoesNotExist:
+        return JsonResponse({"error": f"Solicitud {pk} no encontrada"}, status=404)
+    except AdjustmentRequestError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    return JsonResponse(_serialize_adjustment_request(adjustment), status=200)
+
+
+@csrf_exempt
+@require_http_methods(["PATCH"])
+def adjustment_reject(request, pk: int):
+    try:
+        payload = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "JSON invalido"}, status=400)
+
+    comment = str(payload.get("comment") or "").strip()
+    if not comment:
+        return JsonResponse({"error": "Debe proporcionar un comentario para rechazar"}, status=400)
+
+    try:
+        adjustment = reject_adjustment(pk, supervisor_user=None, comment=comment)  # TODO auth
+    except StockAdjustmentRequest.DoesNotExist:
+        return JsonResponse({"error": f"Solicitud {pk} no encontrada"}, status=404)
+    except AdjustmentRequestError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    return JsonResponse(_serialize_adjustment_request(adjustment), status=200)
+
+
+@csrf_exempt
+def internal_transfers_pending(request):
+    if request.method != "GET":
+        return JsonResponse({"error": f"Metodo {request.method} no permitido"}, status=405)
+    queryset = list_internal_transfers({"status": TransferStatus.PENDING})
+    items = [_serialize_internal_transfer(instance) for instance in queryset]
+    return JsonResponse({"items": items, "count": len(items)}, status=200)
+
+
+@csrf_exempt
+def internal_transfer_detail(request, pk: int):
+    try:
+        transfer = get_internal_transfer(pk)
+    except InternalTransfer.DoesNotExist:
+        return JsonResponse({"error": f"Transferencia {pk} no encontrada"}, status=404)
+
+    if request.method == "GET":
+        return JsonResponse(_serialize_internal_transfer(transfer), status=200)
+
+    return JsonResponse({"error": f"Metodo {request.method} no permitido"}, status=405)
+
+
+@csrf_exempt
+@require_http_methods(["PATCH"])
+def internal_transfer_approve(request, pk: int):
+    try:
+        payload = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "JSON invalido"}, status=400)
+
+    comment = str(payload.get("comment") or "").strip()
+    try:
+        transfer = approve_transfer(pk, supervisor_user=None, comment=comment)  # TODO auth
+    except InternalTransfer.DoesNotExist:
+        return JsonResponse({"error": f"Transferencia {pk} no encontrada"}, status=404)
+    except TransferRequestError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    return JsonResponse(_serialize_internal_transfer(transfer), status=200)
+
+
+@csrf_exempt
+@require_http_methods(["PATCH"])
+def internal_transfer_reject(request, pk: int):
+    try:
+        payload = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "JSON invalido"}, status=400)
+
+    comment = str(payload.get("comment") or "").strip()
+    if not comment:
+        return JsonResponse({"error": "Debe proporcionar un comentario"}, status=400)
+
+    try:
+        transfer = reject_transfer(pk, supervisor_user=None, comment=comment)  # TODO auth
+    except InternalTransfer.DoesNotExist:
+        return JsonResponse({"error": f"Transferencia {pk} no encontrada"}, status=404)
+    except TransferRequestError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+    return JsonResponse(_serialize_internal_transfer(transfer), status=200)
 @csrf_exempt
 def login_view(request):
     if request.method == 'POST':

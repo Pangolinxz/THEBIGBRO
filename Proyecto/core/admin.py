@@ -11,6 +11,7 @@ from .models import (
     StockAlert,
     StockAdjustmentRequest,
     InventoryAudit,
+    InternalTransfer,
 )
 
 admin.site.register(Rol)
@@ -24,3 +25,4 @@ admin.site.register(OrderItem)
 admin.site.register(StockAlert)
 admin.site.register(StockAdjustmentRequest)
 admin.site.register(InventoryAudit)
+admin.site.register(InternalTransfer)

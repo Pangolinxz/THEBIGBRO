@@ -7,9 +7,12 @@ from dataclasses import dataclass
 from typing import Dict, Optional
 
 from django.db import transaction
+from django.utils import timezone
 
 from core.models import (
     Inventory,
+    InventoryAudit,
+    InventoryTransaction,
     Location,
     Product,
     StockAdjustmentRequest,
@@ -133,7 +136,12 @@ def list_adjustment_requests(filters: Optional[Dict[str, str]] = None):
     """
     Returns a queryset filtered according to status, product sku, location code.
     """
-    qs = StockAdjustmentRequest.objects.select_related("product", "location", "created_by")
+    qs = StockAdjustmentRequest.objects.select_related(
+        "product",
+        "location",
+        "created_by",
+        "processed_by",
+    )
     if not filters:
         return qs
 
@@ -158,9 +166,107 @@ def list_adjustment_requests(filters: Optional[Dict[str, str]] = None):
 
 def get_adjustment_request(pk: int) -> StockAdjustmentRequest:
     return (
-        StockAdjustmentRequest.objects.select_related("product", "location", "created_by")
-        .get(pk=pk)
+        StockAdjustmentRequest.objects.select_related(
+            "product",
+            "location",
+            "created_by",
+            "processed_by",
+        ).get(pk=pk)
     )
+
+
+def _validate_pending(adjustment: StockAdjustmentRequest) -> None:
+    if adjustment.status != StockAdjustmentStatus.PENDING:
+        raise AdjustmentRequestError("El ajuste ya fue procesado.")
+
+
+def _movement_type_from_delta(delta: int) -> str:
+    if delta >= 0:
+        return InventoryAudit.MOVEMENT_INGRESS
+    return InventoryAudit.MOVEMENT_EGRESS
+
+
+@transaction.atomic
+def approve_adjustment(
+    adjustment_id: int,
+    supervisor_user: Optional[User],
+    comment: str = "",
+) -> StockAdjustmentRequest:
+    adjustment = StockAdjustmentRequest.objects.select_for_update().select_related(
+        "product", "location"
+    ).get(pk=adjustment_id)
+    _validate_pending(adjustment)
+
+    now = timezone.now()
+    inventory, _ = Inventory.objects.select_for_update().get_or_create(
+        product=adjustment.product,
+        location=adjustment.location,
+        defaults={"quantity": adjustment.system_quantity, "updated_at": now},
+    )
+    previous_stock = inventory.quantity
+    inventory.quantity = adjustment.physical_quantity
+    inventory.updated_at = now
+    inventory.save(update_fields=["quantity", "updated_at"])
+
+    InventoryTransaction.objects.create(
+        product=adjustment.product,
+        location=adjustment.location,
+        user=supervisor_user,
+        type="ajuste-aprobado",
+        quantity=adjustment.delta,
+        created_at=now,
+    )
+
+    InventoryAudit.objects.create(
+        product=adjustment.product,
+        location=adjustment.location,
+        user=supervisor_user,
+        movement_type=_movement_type_from_delta(adjustment.delta),
+        quantity=abs(adjustment.delta),
+        previous_stock=previous_stock,
+        new_stock=inventory.quantity,
+        observations=comment or "Ajuste aprobado",
+    )
+
+    adjustment.status = StockAdjustmentStatus.APPROVED
+    adjustment.processed_by = supervisor_user
+    adjustment.processed_at = now
+    adjustment.resolution_comment = comment
+    adjustment.save(
+        update_fields=["status", "processed_by", "processed_at", "resolution_comment"]
+    )
+    return adjustment
+
+
+@transaction.atomic
+def reject_adjustment(
+    adjustment_id: int,
+    supervisor_user: Optional[User],
+    comment: str = "",
+) -> StockAdjustmentRequest:
+    adjustment = StockAdjustmentRequest.objects.select_for_update().select_related(
+        "product", "location"
+    ).get(pk=adjustment_id)
+    _validate_pending(adjustment)
+
+    now = timezone.now()
+    InventoryTransaction.objects.create(
+        product=adjustment.product,
+        location=adjustment.location,
+        user=supervisor_user,
+        type="ajuste-rechazado",
+        quantity=0,
+        created_at=now,
+    )
+
+    adjustment.status = StockAdjustmentStatus.REJECTED
+    adjustment.processed_by = supervisor_user
+    adjustment.processed_at = now
+    adjustment.resolution_comment = comment
+    adjustment.save(
+        update_fields=["status", "processed_by", "processed_at", "resolution_comment"]
+    )
+    return adjustment
 
 
 __all__ = [
@@ -168,5 +274,7 @@ __all__ = [
     "create_adjustment_request",
     "list_adjustment_requests",
     "get_adjustment_request",
+    "approve_adjustment",
+    "reject_adjustment",
     "StockAdjustmentStatus",
 ]

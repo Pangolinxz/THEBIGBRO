@@ -14,6 +14,11 @@ class StockAdjustmentStatus(models.TextChoices):
     APPROVED = "approved", "Aprobado"
     REJECTED = "rejected", "Rechazado"
 
+class TransferStatus(models.TextChoices):
+    PENDING = "pending", "Pendiente"
+    APPROVED = "approved", "Aprobada"
+    REJECTED = "rejected", "Rechazada"
+
 class Rol(models.Model):
     name = models.CharField(max_length=255, unique=True)
     class Meta:
@@ -115,6 +120,15 @@ class StockAdjustmentRequest(models.Model):
     flagged = models.BooleanField(default=False)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    processed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='processed_adjustments',
+    )
+    processed_at = models.DateTimeField(null=True, blank=True)
+    resolution_comment = models.TextField(blank=True)
 
     class Meta:
         db_table = 'stock_adjustment_request'
@@ -149,3 +163,48 @@ class InventoryAudit(models.Model):
 
     def __str__(self):
         return f"{self.movement_type} {self.quantity} {self.product.sku} @ {self.location.code}"
+
+
+class InternalTransfer(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.PROTECT)
+    quantity = models.PositiveIntegerField()
+    origin_location = models.ForeignKey(
+        Location,
+        on_delete=models.PROTECT,
+        related_name="origin_transfers",
+    )
+    destination_location = models.ForeignKey(
+        Location,
+        on_delete=models.PROTECT,
+        related_name="destination_transfers",
+    )
+    reason = models.TextField(blank=True)
+    status = models.CharField(
+        max_length=32,
+        choices=TransferStatus.choices,
+        default=TransferStatus.PENDING,
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_transfers",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    processed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="processed_transfers",
+    )
+    processed_at = models.DateTimeField(null=True, blank=True)
+    resolution_comment = models.TextField(blank=True)
+
+    class Meta:
+        db_table = "internal_transfer"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Transfer {self.id} - {self.product.sku} ({self.status})"

@@ -53,19 +53,6 @@ CREATE TABLE `inventory_transaction` (
   `created_at` DATETIME
 );
 
-CREATE TABLE `inventory_audit` (
-  `id` INT PRIMARY KEY AUTO_INCREMENT,
-  `product_id` INT NOT NULL,
-  `location_id` INT NOT NULL,
-  `user_id` INT,
-  `movement_type` VARCHAR(20) NOT NULL,
-  `quantity` INT NOT NULL,
-  `previous_stock` INT NOT NULL,
-  `new_stock` INT NOT NULL,
-  `observations` TEXT,
-  `created_at` DATETIME NOT NULL
-);
-
 CREATE TABLE `order` (
   `id` INT PRIMARY KEY AUTO_INCREMENT,
   `seller_id` INT,
@@ -89,9 +76,9 @@ CREATE TABLE `stock_alert` (
 );
 
 CREATE TABLE `stock_adjustment_request` (
-  `id` INT PRIMARY KEY AUTO_INCREMENT,
-  `product_id` INT NOT NULL,
-  `location_id` INT NOT NULL,
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+  `product_id` BIGINT NOT NULL,
+  `location_id` BIGINT NOT NULL,
   `system_quantity` INT NOT NULL,
   `physical_quantity` INT NOT NULL,
   `delta` INT NOT NULL,
@@ -99,8 +86,26 @@ CREATE TABLE `stock_adjustment_request` (
   `attachment_url` TEXT,
   `status` VARCHAR(32) NOT NULL DEFAULT 'pending',
   `flagged` BOOLEAN DEFAULT FALSE,
-  `created_by_id` INT,
-  `created_at` DATETIME NOT NULL
+  `created_by_id` BIGINT,
+  `created_at` DATETIME NOT NULL,
+  `processed_by_id` BIGINT,
+  `processed_at` DATETIME,
+  `resolution_comment` TEXT
+);
+
+CREATE TABLE `internal_transfer` (
+  `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+  `product_id` BIGINT NOT NULL,
+  `quantity` INT UNSIGNED NOT NULL,
+  `origin_location_id` BIGINT NOT NULL,
+  `destination_location_id` BIGINT NOT NULL,
+  `reason` TEXT,
+  `status` VARCHAR(32) NOT NULL DEFAULT 'pending',
+  `created_by_id` BIGINT,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `processed_by_id` BIGINT,
+  `processed_at` DATETIME,
+  `resolution_comment` TEXT
 );
 
 CREATE TABLE `inventory_audit` (
@@ -149,3 +154,9 @@ ALTER TABLE `stock_alert` ADD FOREIGN KEY (`product_id`) REFERENCES `product` (`
 ALTER TABLE `stock_adjustment_request` ADD FOREIGN KEY (`product_id`) REFERENCES `product` (`id`);
 ALTER TABLE `stock_adjustment_request` ADD FOREIGN KEY (`location_id`) REFERENCES `location` (`id`);
 ALTER TABLE `stock_adjustment_request` ADD FOREIGN KEY (`created_by_id`) REFERENCES `user` (`id`);
+ALTER TABLE `stock_adjustment_request` ADD FOREIGN KEY (`processed_by_id`) REFERENCES `user` (`id`);
+ALTER TABLE `internal_transfer` ADD FOREIGN KEY (`product_id`) REFERENCES `product` (`id`);
+ALTER TABLE `internal_transfer` ADD FOREIGN KEY (`origin_location_id`) REFERENCES `location` (`id`);
+ALTER TABLE `internal_transfer` ADD FOREIGN KEY (`destination_location_id`) REFERENCES `location` (`id`);
+ALTER TABLE `internal_transfer` ADD FOREIGN KEY (`created_by_id`) REFERENCES `user` (`id`);
+ALTER TABLE `internal_transfer` ADD FOREIGN KEY (`processed_by_id`) REFERENCES `user` (`id`);
