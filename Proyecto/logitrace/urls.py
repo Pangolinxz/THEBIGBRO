@@ -17,6 +17,8 @@ urlpatterns = [
     path('transfers/internal/<int:pk>/', views.internal_transfer_detail, name='internal-transfer-detail'),
     path('transfers/internal/<int:pk>/approve/', views.internal_transfer_approve, name='internal-transfer-approve'),
     path('transfers/internal/<int:pk>/reject/', views.internal_transfer_reject, name='internal-transfer-reject'),
+    path('audit/movements/', views.audit_movements, name='audit-movements'),
+    path('audit/movements/export/', views.audit_movements_export, name='audit-movements-export'),
     path('api/<slug:model_key>/', views.crud_collection, name='crud-collection'),
     path('api/<slug:model_key>/<int:pk>/', views.crud_resource, name='crud-resource'),
 ]

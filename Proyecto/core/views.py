@@ -48,6 +48,7 @@ from domain.services.inventory_ingress import (
     list_ingress_records,
     register_product_ingress,
 )
+from domain.services.auditing import get_audit_logs
 
 MODEL_REGISTRY = {
     "roles": Rol,
@@ -469,6 +470,53 @@ def internal_transfer_reject(request, pk: int):
         return JsonResponse({"error": str(exc)}, status=400)
 
     return JsonResponse(_serialize_internal_transfer(transfer), status=200)
+
+
+@csrf_exempt
+def audit_movements(request):
+    if request.method != "GET":
+        return JsonResponse({"error": f"Metodo {request.method} no permitido"}, status=405)
+
+    filters = {
+        "date_from": request.GET.get("date_from"),
+        "date_to": request.GET.get("date_to"),
+        "user_id": request.GET.get("user_id"),
+        "product_id": request.GET.get("product_id"),
+        "location_id": request.GET.get("location_id"),
+        "action": request.GET.get("action"),
+        "ordering": request.GET.get("ordering"),
+    }
+    queryset = get_audit_logs(filters)
+    items = [
+        {
+            "id": tx.id,
+            "product": tx.product.sku if tx.product else None,
+            "location": tx.location.code if tx.location else None,
+            "user": tx.user.username if tx.user else None,
+            "type": tx.type,
+            "quantity": tx.quantity,
+            "created_at": tx.created_at.isoformat() if tx.created_at else None,
+        }
+        for tx in queryset
+    ]
+    return JsonResponse({"items": items, "count": len(items)}, status=200)
+
+
+@csrf_exempt
+def audit_movements_export(request):
+    if request.method != "GET":
+        return JsonResponse({"error": f"Metodo {request.method} no permitido"}, status=405)
+
+    queryset = get_audit_logs(request.GET)
+    lines = ["id,product,location,user,type,quantity,created_at"]
+    for tx in queryset:
+        lines.append(
+            f"{tx.id},{tx.product.sku if tx.product else ''},{tx.location.code if tx.location else ''},"
+            f"{tx.user.username if tx.user else ''},{tx.type},{tx.quantity},"
+            f"{tx.created_at.isoformat() if tx.created_at else ''}"
+        )
+    csv_data = "\n".join(lines)
+    return JsonResponse({"csv": csv_data})
 @csrf_exempt
 def login_view(request):
     if request.method == 'POST':
