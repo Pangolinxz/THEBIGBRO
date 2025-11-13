@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+{% block title %}Despacho de pedidos{% endblock %}
+{% block content %}
+{% if editing_order %}
+<h2>Editar pedido #{{ editing_order.id }}</h2>
+{% else %}
+<h2>Registrar pedido (RF08)</h2>
+{% endif %}
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3">
+            {% for title, description in guidance_steps %}
+            <div class="col-md-3">
+                <h6 class="fw-semibold mb-1">{{ title }}</h6>
+                <p class="small mb-0">{{ description }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="post" id="create-order-form">
+            {% csrf_token %}
+            {% if editing_order %}
+            <input type="hidden" name="action" value="update-order">
+            <input type="hidden" name="order_id" value="{{ editing_order.id }}">
+            {% else %}
+            <input type="hidden" name="action" value="create-order">
+            {% endif %}
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Cliente</label>
+                    <input type="text" class="form-control" name="customer_name" placeholder="Nombre del cliente" value="{{ order_form.customer_name }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Dirección</label>
+                    <input type="text" class="form-control" name="customer_address" placeholder="Dirección de envío" value="{{ order_form.customer_address }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Contacto / Persona que recibe</label>
+                    <input type="text" class="form-control" name="contact_name" placeholder="Nombre del contacto" value="{{ order_form.contact_name }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Teléfono contacto</label>
+                    <input type="text" class="form-control" name="contact_phone" placeholder="+57..." value="{{ order_form.contact_phone }}">
+                </div>
+                {% if not editing_order %}
+                <div class="col-md-3">
+                    <label class="form-label">Estado inicial</label>
+                    <select class="form-select" name="status_new">
+                        {% for value, label in status_choices %}
+                        <option value="{{ value }}" {% if value == status_filter %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% else %}
+                <div class="col-md-3">
+                    <label class="form-label">Estado actual</label>
+                    <input type="text" class="form-control" value="{{ editing_order.get_status_display }}" disabled>
+                    <small class="text-muted">Solo se puede editar en estados CREADO o RESERVADO.</small>
+                </div>
+                {% endif %}
+                <div class="col-md-3">
+                    <label class="form-label">Método de pago</label>
+                    <select class="form-select" name="payment_method">
+                        {% for value, label in payment_choices %}
+                        <option value="{{ value }}" {% if order_form.payment_method == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Fecha estimada de llegada</label>
+                    <input type="date" class="form-control" name="eta_date" value="{{ order_form.eta_date }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Hora estimada</label>
+                    <input type="time" class="form-control" name="eta_time" value="{{ order_form.eta_time }}">
+                </div>
+            </div>
+            <hr>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle" id="order-items-table">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Ubicación</th>
+                            <th>Cantidad</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-outline-primary" id="add-item-row">Agregar producto</button>
+            {% if editing_order %}
+            <button class="btn btn-success ms-2">Actualizar pedido</button>
+            <a class="btn btn-outline-secondary ms-2" href="{% url 'orders-ui' %}">Cancelar edición</a>
+            {% else %}
+            <button class="btn btn-success ms-2">Crear pedido</button>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+<h2>Pedidos y seguimiento</h2>
+<form method="get" class="row g-3 mb-4">
+    <div class="col-md-3">
+        <label class="form-label">Estado</label>
+        <select class="form-select" name="status">
+            <option value="all" {% if status_filter == "all" %}selected{% endif %}>Todos</option>
+            {% for value, label in status_choices %}
+            <option value="{{ value }}" {% if value == status_filter %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Pedido #</label>
+        <input type="number" class="form-control" name="order_id" value="{{ order_id_filter }}" placeholder="Opcional">
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <button class="btn btn-primary w-100">Filtrar</button>
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <a class="btn btn-outline-secondary w-100" href="{% url 'orders-ui' %}">Limpiar</a>
+    </div>
+</form>
+
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Estado</th>
+                <th>Cliente y destino</th>
+                <th>Programación</th>
+                <th>Seguimiento</th>
+                <th>Productos</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in orders_tracking %}
+            {% with order=row.order %}
+            <tr>
+                <td class="fw-semibold">{{ order.id }}</td>
+                <td>
+                    <span class="badge bg-secondary">{{ order.get_status_display }}</span>
+                    <div class="small text-muted">Creado {{ order.created_at|date:"Y-m-d H:i" }}</div>
+                </td>
+                <td>
+                    <div class="fw-semibold">{{ order.customer_name|default:"Sin cliente" }}</div>
+                    <div class="small text-muted">{{ order.customer_address|default:"Sin dirección" }}</div>
+                    <div class="small">
+                        Contacto: {{ order.contact_name|default:"-" }} |
+                        {{ order.contact_phone|default:"Sin teléfono" }}
+                    </div>
+                    <span class="badge bg-light text-dark">Pago: {{ order.get_payment_method_display }}</span>
+                </td>
+                <td>
+                    <ul class="list-unstyled mb-0 small">
+                        <li><strong>ETA:</strong> {% if order.estimated_arrival_time %}{{ order.estimated_arrival_time|date:"Y-m-d H:i" }}{% else %}-{% endif %}</li>
+                        <li><strong>Salida:</strong> {% if order.departure_time %}{{ order.departure_time|date:"Y-m-d H:i" }}{% else %}-{% endif %}</li>
+                        <li><strong>Entrega real:</strong> {% if order.actual_arrival_time %}{{ order.actual_arrival_time|date:"Y-m-d H:i" }}{% else %}-{% endif %}</li>
+                        <li><strong>Vendedor:</strong> {% if order.seller_id %}{{ order.seller_id.username }}{% else %}-{% endif %}</li>
+                    </ul>
+                </td>
+                <td>
+                    <div class="mb-1">{{ row.tracking_message }}</div>
+                    {% if row.countdown %}
+                    <span class="badge {% if row.overdue %}bg-danger{% else %}bg-info text-dark{% endif %}">
+                        {{ row.countdown }}
+                    </span>
+                    {% endif %}
+                    {% if row.alert and not row.alert.resolved %}
+                    <div class="small text-muted mt-1">{{ row.alert.message }}</div>
+                    {% elif row.alert and row.alert.resolved %}
+                    <div class="small text-success mt-1">Alerta resuelta</div>
+                    {% endif %}
+                </td>
+                <td>
+                    <ul class="mb-0">
+                        {% for item in order.orderitem_set.all %}
+                        <li>
+                            <strong>{{ item.product.sku }}</strong> &times; {{ item.quantity }}
+                            {% if item.location %}
+                                <span class="badge bg-light text-dark">LOC {{ item.location.code }}</span>
+                            {% else %}
+                                <span class="badge bg-danger">Sin ubicación</span>
+                            {% endif %}
+                            {% if item.reserved %}
+                            <span class="text-success small">(Reservado)</span>
+                            {% else %}
+                            <span class="text-muted small">(Liberado)</span>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </td>
+                <td>
+                    {% if order.status == "created" %}
+                    <form method="post" class="d-flex flex-column gap-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="reserve">
+                        <input type="hidden" name="order_id" value="{{ order.id }}">
+                        <button class="btn btn-sm btn-primary">Reservar</button>
+                    </form>
+                    <a class="btn btn-sm btn-outline-primary mt-2" href="{% url 'orders-ui' %}?edit_order={{ order.id }}">Editar</a>
+                    {% elif order.status == "reserved" %}
+                    <form method="post" class="d-flex flex-column gap-2 order-confirm-form" data-confirm="¿Verificaste físicamente el pedido #{{ order.id }} y deseas despacharlo?">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="dispatch">
+                        <input type="hidden" name="order_id" value="{{ order.id }}">
+                        <button class="btn btn-sm btn-success">Despachar</button>
+                    </form>
+                    <a class="btn btn-sm btn-outline-primary mt-2" href="{% url 'orders-ui' %}?edit_order={{ order.id }}">Editar</a>
+                    {% elif order.status == "dispatched" %}
+                    <form method="post" class="order-confirm-form" data-confirm="¿Confirmas que el pedido #{{ order.id }} llegó al cliente?">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="close">
+                        <input type="hidden" name="order_id" value="{{ order.id }}">
+                        <button class="btn btn-sm btn-warning text-white">Cerrar pedido</button>
+                    </form>
+                    {% else %}
+                    <span class="text-muted">Sin acciones</span>
+                    {% endif %}
+                    {% if order.status != "dispatched" and order.status != "closed" %}
+                    <form method="post" class="mt-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="order_id" value="{{ order.id }}">
+                        <button class="btn btn-sm btn-outline-danger" onclick="return confirm('¿Eliminar el pedido {{ order.id }}?')">Eliminar</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endwith %}
+            {% empty %}
+            <tr><td colspan="7" class="text-center">No hay pedidos para mostrar.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ edit_items|json_script:"edit-items-data" }}
+<script>
+    (function () {
+        const tableBody = document.querySelector('#order-items-table tbody');
+        const addBtn = document.getElementById('add-item-row');
+
+        function addRow(prefill) {
+            const skuValue = prefill && prefill.sku ? prefill.sku : "";
+            const locationValue = prefill && prefill.location ? prefill.location : "";
+            const quantityValue = prefill && prefill.quantity ? prefill.quantity : 1;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <input type="text" class="form-control" name="item_sku[]" placeholder="SKU" required>
+                </td>
+                <td>
+                    <input type="text" class="form-control" name="item_location[]" placeholder="LOC-01" required>
+                </td>
+                <td>
+                    <input type="number" class="form-control" name="item_quantity[]" min="1" value="1" required>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-item">Quitar</button>
+                </td>
+            `;
+            const skuInput = row.querySelector('input[name="item_sku[]"]');
+            const locationInput = row.querySelector('input[name="item_location[]"]');
+            const quantityInput = row.querySelector('input[name="item_quantity[]"]');
+            skuInput.value = skuValue;
+            locationInput.value = locationValue;
+            quantityInput.value = quantityValue;
+            tableBody.appendChild(row);
+        }
+
+        addBtn.addEventListener('click', addRow);
+        tableBody.addEventListener('click', function (event) {
+            if (event.target.classList.contains('remove-item')) {
+                const row = event.target.closest('tr');
+                if (row) {
+                    row.remove();
+                }
+            }
+        });
+
+        const editItemsScript = document.getElementById('edit-items-data');
+        let preloadedItems = [];
+        if (editItemsScript) {
+            try {
+                preloadedItems = JSON.parse(editItemsScript.textContent) || [];
+            } catch (error) {
+                preloadedItems = [];
+            }
+        }
+
+        if (preloadedItems.length) {
+            tableBody.innerHTML = '';
+            preloadedItems.forEach(function (item) {
+                addRow(item);
+            });
+        } else if (!tableBody.children.length) {
+            addRow();
+        }
+
+        document.querySelectorAll('.order-confirm-form').forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                const message = form.dataset.confirm;
+                if (message && !window.confirm(message)) {
+                    event.preventDefault();
+                }
+            });
+        });
+    })();
+</script>
+{% endblock %}

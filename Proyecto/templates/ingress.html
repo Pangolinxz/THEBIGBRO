@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% block title %}Ingresos (RF06){% endblock %}
+{% block content %}
+<h2>Registrar ingreso</h2>
+<form method="post" class="row g-3 mb-4" id="ingress-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create">
+    <input type="hidden" name="confirm_mismatch" id="confirm-mismatch" value="0">
+    <div class="col-md-4">
+        <label class="form-label">Producto</label>
+        <input type="text"
+               class="form-control"
+               name="sku"
+               value="{{ form_data.sku }}"
+               required
+               placeholder="Buscar SKU o nombre"
+               list="ingress-products"
+               data-autocomplete-url="{% url 'products-autocomplete' %}"
+               data-datalist-id="ingress-products"
+               data-value-field="sku"
+               data-label-field="label">
+        <datalist id="ingress-products">
+            {% for product in products %}
+            <option value="{{ product.sku }}" label="{{ product.sku }} - {{ product.name }}"></option>
+            {% endfor %}
+        </datalist>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Ubicación</label>
+        <input type="text"
+               class="form-control"
+               name="location_code"
+               value="{{ form_data.location_code }}"
+               required
+               placeholder="Buscar ubicación"
+               list="ingress-locations"
+               data-autocomplete-url="{% url 'locations-autocomplete' %}"
+               data-datalist-id="ingress-locations"
+               data-value-field="code"
+               data-label-field="label">
+        <datalist id="ingress-locations">
+            {% for loc in locations %}
+            <option value="{{ loc.code }}" label="{{ loc.code }} - {{ loc.description|default:"" }}"></option>
+            {% endfor %}
+        </datalist>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Cantidad a ingresar</label>
+        <input type="number" class="form-control" name="quantity" min="1" value="{{ form_data.quantity }}" required>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Conteo físico actual</label>
+        <input type="number" class="form-control" name="physical_count" min="0" value="{{ form_data.physical_count }}" required>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Inventario en sistema</label>
+        <input type="number" class="form-control" id="ingress-system-qty" value="{% if mismatch_info %}{{ mismatch_info.system }}{% else %}0{% endif %}" readonly>
+        <div class="form-text">Se obtiene automáticamente.</div>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Observaciones</label>
+        <input type="text" class="form-control" name="observations" value="{{ form_data.observations }}">
+    </div>
+    <div class="col-12">
+        <div class="alert alert-info" id="ingress-delta-summary" role="alert">
+            Sistema: <strong id="ingress-system-value">{% if mismatch_info %}{{ mismatch_info.system }}{% else %}0{% endif %}</strong> |
+            Físico: <strong id="ingress-physical-value">{% if mismatch_info %}{{ mismatch_info.physical }}{% else %}0{% endif %}</strong> |
+            Δ: <strong id="ingress-delta-value">{% if mismatch_info %}{{ mismatch_info.delta }}{% else %}0{% endif %}</strong>
+            <span id="ingress-delta-flag" class="badge bg-warning text-dark ms-2 {% if not mismatch_info or mismatch_info.delta == 0 %}d-none{% endif %}">Diferencia detectada</span>
+        </div>
+    </div>
+    {% if mismatch_info %}
+    <div class="col-12">
+        <div class="alert alert-warning">
+            Se detectó diferencia entre el stock del sistema ({{ mismatch_info.system }}) y el físico ({{ mismatch_info.physical }}).
+            Confirma si deseas continuar y generar una alerta automática.
+        </div>
+        <div class="form-check mb-2">
+            <input class="form-check-input" type="checkbox" name="confirm_mismatch_checkbox" id="confirmMismatchCheckbox">
+            <label class="form-check-label" for="confirmMismatchCheckbox">
+                Entiendo la diferencia y deseo continuar con el ingreso.
+            </label>
+        </div>
+    </div>
+    {% endif %}
+    <div class="col-12 d-flex gap-2">
+        <button class="btn btn-primary">Registrar</button>
+        <button type="reset" class="btn btn-outline-secondary" id="ingress-reset">Limpiar</button>
+    </div>
+</form>
+
+<h2>Ingresos recientes</h2>
+<div class="table-responsive">
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Producto</th>
+                <th>Ubicación</th>
+                <th>Tipo</th>
+                <th>Cantidad</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for audit in audits %}
+            <tr>
+                <td>{{ audit.id }}</td>
+                <td>{{ audit.product.sku }}</td>
+                <td>{{ audit.location.code }}</td>
+                <td>{{ audit.movement_type }}</td>
+                <td>{{ audit.quantity }}</td>
+                <td>{{ audit.created_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center">Sin registros.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    (function () {
+        const skuInput = document.querySelector('input[name="sku"]');
+        const locationInput = document.querySelector('input[name="location_code"]');
+        const quantityInput = document.querySelector('input[name="quantity"]');
+        const physicalInput = document.querySelector('input[name="physical_count"]');
+        const systemInput = document.getElementById('ingress-system-qty');
+        const systemValueEl = document.getElementById('ingress-system-value');
+        const physicalValueEl = document.getElementById('ingress-physical-value');
+        const deltaValueEl = document.getElementById('ingress-delta-value');
+        const deltaFlagEl = document.getElementById('ingress-delta-flag');
+        const confirmField = document.getElementById('confirm-mismatch');
+        const form = document.getElementById('ingress-form');
+        const resetBtn = document.getElementById('ingress-reset');
+        const confirmCheckbox = document.getElementById('confirmMismatchCheckbox');
+
+        function updateSummary() {
+            const systemQty = parseInt(systemInput.value || '0', 10) || 0;
+            const physicalQty = parseInt(physicalInput.value || '0', 10) || 0;
+            const delta = physicalQty - systemQty;
+            systemValueEl.textContent = systemQty;
+            physicalValueEl.textContent = physicalQty;
+            deltaValueEl.textContent = delta;
+            deltaFlagEl.classList.toggle('d-none', delta === 0);
+            return delta;
+        }
+
+        function fetchSystemQuantity() {
+            const sku = skuInput.value.trim();
+            const location = locationInput.value.trim();
+            if (!sku || !location) {
+                systemInput.value = 0;
+                updateSummary();
+                return;
+            }
+            const url = "{% url 'system-quantity-api' %}?sku=" + encodeURIComponent(sku) + "&location=" + encodeURIComponent(location);
+            fetch(url)
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error("Error al obtener inventario");
+                    }
+                    return response.json();
+                })
+                .then(function (data) {
+                    systemInput.value = data.quantity || 0;
+                    updateSummary();
+                })
+                .catch(function () {
+                    systemInput.value = 0;
+                    updateSummary();
+                });
+        }
+
+        skuInput.addEventListener('change', fetchSystemQuantity);
+        locationInput.addEventListener('change', fetchSystemQuantity);
+        physicalInput.addEventListener('input', updateSummary);
+
+        form.addEventListener('submit', function (event) {
+            const delta = updateSummary();
+            const checkboxChecked = confirmCheckbox ? confirmCheckbox.checked : false;
+            confirmField.value = checkboxChecked ? '1' : '0';
+            if (delta !== 0 && !checkboxChecked) {
+                const proceed = confirm("Hay diferencias entre el físico y el sistema. ¿Deseas continuar y generar una alerta?");
+                if (!proceed) {
+                    event.preventDefault();
+                    return;
+                }
+                confirmField.value = '1';
+                if (confirmCheckbox) {
+                    confirmCheckbox.checked = true;
+                }
+            }
+        });
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function () {
+                setTimeout(function () {
+                    systemInput.value = 0;
+                    confirmField.value = '0';
+                    updateSummary();
+                }, 0);
+            });
+        }
+
+        // inicial
+        updateSummary();
+        if (skuInput.value.trim() && locationInput.value.trim()) {
+            fetchSystemQuantity();
+        }
+    })();
+</script>
+{% endblock %}

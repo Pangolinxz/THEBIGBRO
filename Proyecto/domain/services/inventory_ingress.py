@@ -16,6 +16,7 @@ from core.models import (
     Product,
     User,
 )
+from domain.services.location_capacity import location_total_stock
 
 
 class IngressError(ValueError):
@@ -80,6 +81,15 @@ def register_product_ingress(
         defaults={"quantity": 0, "updated_at": now},
     )
     previous_stock = inventory.quantity
+
+    other_products_total = location_total_stock(location, exclude_inventory_id=inventory.pk)
+    projected_total = other_products_total + previous_stock + quantity
+    if location.capacity and projected_total > location.capacity:
+        raise IngressError(
+            f"La ubicación {location.code} solo admite {location.capacity} unidades. "
+            f"Reducir la cantidad o utilice otra ubicación (actual proyectado: {projected_total})."
+        )
+
     new_stock = previous_stock + quantity
 
     inventory.quantity = new_stock

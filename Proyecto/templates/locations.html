@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Ubicaciones{% endblock %}
+{% block content %}
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">Registrar ubicación</div>
+            <div class="card-body">
+                <form method="post" class="row g-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create">
+                    <div class="col-md-4">
+                        <label class="form-label">Código</label>
+                        <input type="text" class="form-control" name="code" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Capacidad</label>
+                        <input type="number" class="form-control" name="capacity" min="0" value="0">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control" rows="2" name="description" placeholder="Tipo, pasillo, estante, nivel, posición"></textarea>
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-primary">Guardar ubicación</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">Editar ubicación</div>
+            <div class="card-body">
+                {% if edit_location %}
+                <form method="post" class="row g-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update">
+                    <input type="hidden" name="location_id" value="{{ edit_location.id }}">
+                    <div class="col-md-4">
+                        <label class="form-label">Código</label>
+                        <input type="text" class="form-control" name="code" value="{{ edit_location.code }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Capacidad</label>
+                        <input type="number" class="form-control" name="capacity" min="0" value="{{ edit_location.capacity }}">
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control" rows="2" name="description">{{ edit_location.description }}</textarea>
+                    </div>
+                    <div class="col-md-4 form-check ms-3">
+                        <input class="form-check-input" type="checkbox" name="is_active" id="edit-active" {% if edit_location.is_active %}checked{% endif %}>
+                        <label class="form-check-label" for="edit-active">Activa</label>
+                    </div>
+                    <div class="col-12 d-flex gap-2">
+                        <button class="btn btn-success">Actualizar ubicación</button>
+                        <a class="btn btn-outline-secondary" href="{% url 'locations-ui' %}">Cancelar</a>
+                    </div>
+                </form>
+                {% else %}
+                <p class="text-muted mb-3">Selecciona una ubicación en la tabla y haz clic en “Editar”.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<h2 class="mt-4">Ubicaciones registradas</h2>
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Descripción</th>
+                <th>Capacidad</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for location in locations %}
+            <tr>
+                <td>{{ location.code }}</td>
+                <td>{{ location.description|default:"—" }}</td>
+                <td>{{ location.capacity }}</td>
+                <td>
+                    {% if location.is_active %}
+                    <span class="badge bg-success">Activa</span>
+                    {% else %}
+                    <span class="badge bg-danger">Inactiva</span>
+                    {% endif %}
+                </td>
+                <td class="d-flex gap-2">
+                    <a class="btn btn-sm btn-outline-primary" href="{% url 'locations-ui' %}?edit={{ location.id }}">Editar</a>
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="toggle">
+                        <input type="hidden" name="location_id" value="{{ location.id }}">
+                        {% if location.is_active %}
+                        <button class="btn btn-sm btn-outline-warning" type="submit">Desactivar</button>
+                        {% else %}
+                        <button class="btn btn-sm btn-outline-success" type="submit">Activar</button>
+                        {% endif %}
+                    </form>
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="location_id" value="{{ location.id }}">
+                        <button class="btn btn-sm btn-outline-danger" type="submit" {% if location.has_inventory %}disabled title="Tiene inventario asociado"{% endif %}>Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center">Sin ubicaciones.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -18,6 +18,7 @@ from core.models import (
     Location,
     User,
 )
+from domain.services.location_capacity import location_total_stock
 
 
 class TransferRequestError(ValueError):
@@ -108,13 +109,25 @@ def approve_transfer(
     origin_previous = origin_inventory.quantity
     destination_previous = destination_inventory.quantity
 
+    other_dest_products = location_total_stock(destination, exclude_inventory_id=destination_inventory.pk)
+    projected_destination = other_dest_products + destination_previous + qty
+    if destination.capacity and projected_destination > destination.capacity:
+        raise TransferRequestError(
+            f"La ubicación destino {destination.code} solo admite {destination.capacity} unidades. "
+            f"Reduce la cantidad o selecciona otra ubicación."
+        )
+
     origin_inventory.quantity = origin_previous - qty
     origin_inventory.updated_at = now
     origin_inventory.save(update_fields=["quantity", "updated_at"])
 
     destination_inventory.quantity = destination_previous + qty
     destination_inventory.updated_at = now
-    destination_inventory.save(update_fields=["quantity", "updated_at"])
+    dest_update_fields = ["quantity", "updated_at"]
+    if transfer.destination_reorder_point is not None:
+        destination_inventory.custom_reorder_point = transfer.destination_reorder_point
+        dest_update_fields.append("custom_reorder_point")
+    destination_inventory.save(update_fields=dest_update_fields)
 
     InventoryTransaction.objects.bulk_create(
         [

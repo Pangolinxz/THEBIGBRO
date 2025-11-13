@@ -19,6 +19,7 @@ from core.models import (
     StockAdjustmentStatus,
     User,
 )
+from domain.services.location_capacity import location_total_stock
 
 
 class AdjustmentRequestError(ValueError):
@@ -41,6 +42,11 @@ def _get_tolerance() -> int:
         return max(int(raw), 0)
     except ValueError:
         return 0
+
+
+def get_adjustment_tolerance() -> int:
+    """Expose current tolerance so UI layers can communicate the rule."""
+    return _get_tolerance()
 
 
 def _get_product(sku: str) -> Product:
@@ -204,6 +210,15 @@ def approve_adjustment(
         defaults={"quantity": adjustment.system_quantity, "updated_at": now},
     )
     previous_stock = inventory.quantity
+
+    other_products_total = location_total_stock(adjustment.location, exclude_inventory_id=inventory.pk)
+    projected_total = other_products_total + adjustment.physical_quantity
+    if adjustment.location.capacity and projected_total > adjustment.location.capacity:
+        raise AdjustmentRequestError(
+            f"La ubicación {adjustment.location.code} no tiene capacidad suficiente "
+            f"(máximo {adjustment.location.capacity}, proyectado {projected_total})."
+        )
+
     inventory.quantity = adjustment.physical_quantity
     inventory.updated_at = now
     inventory.save(update_fields=["quantity", "updated_at"])
@@ -277,4 +292,5 @@ __all__ = [
     "approve_adjustment",
     "reject_adjustment",
     "StockAdjustmentStatus",
+    "get_adjustment_tolerance",
 ]

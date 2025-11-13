@@ -1,0 +1,141 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}LogiTrace{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'dashboard' %}">LogiTrace</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'ingress-ui' %}">Ingresos (RF06)</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'adjustments-ui' %}">Ajustes (RF13/14)</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'transfers-ui' %}">Transferencias (RF15)</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'audit-ui' %}">Auditoría (RF16)</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'alerts-ui' %}">Alertas (RF18)</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'orders-ui' %}">Pedidos (RF08)</a></li>
+                    {% if user.is_authenticated %}
+                        {% if user.is_superuser %}
+                        <li class="nav-item"><a class="nav-link" href="{% url 'products-ui' %}">Productos</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'users-ui' %}">Usuarios</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'locations-ui' %}">Ubicaciones</a></li>
+                        {% elif user.role and user.role.name|lower == "supervisor" %}
+                        <li class="nav-item"><a class="nav-link" href="{% url 'products-ui' %}">Productos</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'users-ui' %}">Usuarios</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'locations-ui' %}">Ubicaciones</a></li>
+                        {% endif %}
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    {% if user.is_authenticated %}
+                        <li class="nav-item"><span class="nav-link disabled">Hola, {{ user.username }}</span></li>
+                        <li class="nav-item"><a class="nav-link" href="{% url 'logout' %}">Salir</a></li>
+                    {% else %}
+                        <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Ingresar</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function () {
+            function attachAutocomplete(input) {
+                var url = input.dataset.autocompleteUrl;
+                var datalistId = input.dataset.datalistId;
+                if (!url || !datalistId) {
+                    return;
+                }
+                var datalist = document.getElementById(datalistId);
+                if (!datalist) {
+                    return;
+                }
+                var minChars = parseInt(input.dataset.minChars || "2", 10);
+                var controller = null;
+
+                input.addEventListener("input", function () {
+                    var term = input.value.trim();
+                    if (term.length < minChars) {
+                        datalist.innerHTML = "";
+                        if (controller && typeof controller.abort === "function") {
+                            controller.abort();
+                        }
+                        return;
+                    }
+
+                    if (typeof AbortController !== "undefined") {
+                        if (controller) {
+                            controller.abort();
+                        }
+                        controller = new AbortController();
+                    }
+
+                    var fetchOptions = {};
+                    if (controller && controller.signal) {
+                        fetchOptions.signal = controller.signal;
+                    }
+
+                    fetch(url + "?q=" + encodeURIComponent(term), fetchOptions)
+                        .then(function (response) {
+                            if (!response.ok) {
+                                throw new Error("Error HTTP " + response.status);
+                            }
+                            return response.json();
+                        })
+                        .then(function (payload) {
+                            var items = payload.items || [];
+                            var valueField = input.dataset.valueField || "label";
+                            var labelField = input.dataset.labelField || "label";
+                            datalist.innerHTML = "";
+                            if (!items.length) {
+                                return;
+                            }
+                            items.forEach(function (item) {
+                                var option = document.createElement("option");
+                                var value = typeof item[valueField] !== "undefined" ? item[valueField] : "";
+                                var labelValue = typeof item[labelField] !== "undefined" ? item[labelField] : (item.label || value);
+                                option.value = value;
+                                if (labelValue) {
+                                    option.label = labelValue;
+                                } else {
+                                    option.textContent = value;
+                                }
+                                datalist.appendChild(option);
+                            });
+                        })
+                        .catch(function () {
+                            datalist.innerHTML = "";
+                        });
+                });
+            }
+
+            document.addEventListener("DOMContentLoaded", function () {
+                document.querySelectorAll("[data-autocomplete-url]").forEach(attachAutocomplete);
+            });
+        })();
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

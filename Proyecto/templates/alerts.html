@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Alertas (RF18){% endblock %}
+{% block content %}
+<h2>Alertas automáticas (RF18)</h2>
+
+<div class="mb-3">
+    <h5 class="fw-semibold">Por bajo stock</h5>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Ubicación</th>
+                    <th>Cantidad</th>
+                    <th>Mínimo</th>
+                    <th>Motivo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in auto_stock_alerts %}
+                <tr>
+                    <td>{{ item.product.sku }}</td>
+                    <td>{{ item.location.code }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.minimum }}</td>
+                    <td>{{ item.message }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center">Sin alertas por stock.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="mb-4">
+    <h5 class="fw-semibold">Despacho y cuenta regresiva</h5>
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Pedido</th>
+                    <th>Cliente / Destino</th>
+                    <th>ETA</th>
+                    <th>Estado</th>
+                    <th>Mensaje</th>
+                    <th>Tiempo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alert in delivery_alerts %}
+                <tr>
+                    <td>
+                        #{{ alert.order.id }}<br>
+                        <span class="badge bg-light text-dark">
+                            SKU asociados: {{ alert.order.orderitem_set.count }}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="fw-semibold">{{ alert.order.customer_name|default:"Sin cliente" }}</div>
+                        <div class="small text-muted">{{ alert.order.customer_address|default:"-" }}</div>
+                    </td>
+                    <td>{{ alert.due_local|date:"Y-m-d H:i" }}</td>
+                    <td>
+                        <span class="badge {% if alert.resolved %}bg-success{% elif alert.overdue %}bg-danger{% else %}bg-info text-dark{% endif %}">
+                            {{ alert.status }}
+                        </span>
+                    </td>
+                    <td>
+                        {{ alert.message }}
+                        {% if alert.note %}
+                        <div class="small text-muted">{{ alert.note }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if alert.resolved %}
+                        <span class="text-success">Completado</span>
+                        {% else %}
+                        {% if alert.overdue %}<span class="text-danger">{% endif %}
+                        {{ alert.countdown }}
+                        {% if alert.overdue %}</span>{% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6" class="text-center">Sin alertas de despacho.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<h2>Alertas manuales</h2>
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Producto</th>
+                <th>Mensaje</th>
+                <th>Fecha</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for alert in manual_alerts %}
+            <tr>
+                <td>{{ alert.id }}</td>
+                <td>{{ alert.product.sku }}</td>
+                <td>{{ alert.message }}</td>
+                <td>{{ alert.triggered_at|date:"Y-m-d H:i" }}</td>
+                <td>
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="alert_id" value="{{ alert.id }}">
+                        <button class="btn btn-sm btn-outline-danger">Cerrar</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-center">Sin alertas activas.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if manual_alerts|length == 0 and auto_alerts_count == 0 %}
+    <p class="text-muted">
+        Genera alertas desde los módulos de inventario o despacho para verlas aquí.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

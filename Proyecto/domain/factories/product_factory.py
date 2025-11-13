@@ -1,8 +1,3 @@
-"""
-Factory Method implementation that standardizes how different product species
-are instantiated inside LogiTrace. Each blueprint encapsulates the domain rules
-for a category (temperatura de almacenamiento, punto de reorden minimo, tags).
-"""
 
 from __future__ import annotations
 

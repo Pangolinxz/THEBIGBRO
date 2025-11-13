@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Auditoría de movimientos{% endblock %}
+{% block content %}
+<h2>Auditoría (RF16)</h2>
+<form method="get" class="row g-3 mb-4">
+    <div class="col-md-3">
+        <label class="form-label">Desde</label>
+        <input type="date" class="form-control" name="date_from" value="{{ request.GET.date_from }}">
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Hasta</label>
+        <input type="date" class="form-control" name="date_to" value="{{ request.GET.date_to }}">
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Usuario ID</label>
+        <input type="number" class="form-control" name="user_id" value="{{ request.GET.user_id }}">
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Producto (SKU)</label>
+        <input type="text" class="form-control" name="product_sku" value="{{ request.GET.product_sku }}" placeholder="Ej: FOOD-0001">
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Acción</label>
+        <input type="text" class="form-control" name="action" value="{{ request.GET.action }}">
+    </div>
+    <div class="col-12">
+        <button class="btn btn-primary">Filtrar</button>
+        <a class="btn btn-outline-secondary" href="{% url 'audit-movements-export' %}?{{ request.GET.urlencode }}">Exportar CSV</a>
+    </div>
+</form>
+
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Producto</th>
+                <th>Ubicación</th>
+                <th>Usuario</th>
+                <th>Acción</th>
+                <th>Cantidad</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.id }}</td>
+                <td>{% if log.product %}{{ log.product.sku }}{% else %}-{% endif %}</td>
+                <td>{% if log.location %}{{ log.location.code }}{% else %}-{% endif %}</td>
+                <td>{% if log.user %}{{ log.user.username }}{% else %}-{% endif %}</td>
+                <td>{{ log.display_type }}</td>
+                <td>{{ log.quantity }}</td>
+                <td>{{ log.created_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center">Sin resultados.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

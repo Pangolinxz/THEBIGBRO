@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Transferencias internas{% endblock %}
+{% block content %}
+<h2>Nueva transferencia</h2>
+<form method="post" class="row g-3 mb-4">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create">
+    <div class="col-md-3">
+        <label class="form-label">Producto</label>
+        <input type="text"
+               class="form-control"
+               name="sku"
+               required
+               placeholder="Buscar SKU o nombre"
+               list="transfer-products"
+               data-autocomplete-url="{% url 'products-autocomplete' %}"
+               data-datalist-id="transfer-products"
+               data-value-field="sku"
+               data-label-field="label">
+        <datalist id="transfer-products">
+            {% for product in products %}
+            <option value="{{ product.sku }}" label="{{ product.sku }} - {{ product.name }}"></option>
+            {% endfor %}
+        </datalist>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Origen</label>
+        <input type="text"
+               class="form-control"
+               name="origin_code"
+               required
+               placeholder="Buscar ubicación"
+               list="transfer-origins"
+               data-autocomplete-url="{% url 'locations-autocomplete' %}"
+               data-datalist-id="transfer-origins"
+               data-value-field="code"
+               data-label-field="label">
+        <datalist id="transfer-origins">
+            {% for loc in locations %}
+            <option value="{{ loc.code }}" label="{{ loc.code }} - {{ loc.description|default:"" }}"></option>
+            {% endfor %}
+        </datalist>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Destino</label>
+        <input type="text"
+               class="form-control"
+               name="destination_code"
+               required
+               placeholder="Buscar ubicación"
+               list="transfer-destinations"
+               data-autocomplete-url="{% url 'locations-autocomplete' %}"
+               data-datalist-id="transfer-destinations"
+               data-value-field="code"
+               data-label-field="label">
+        <datalist id="transfer-destinations">
+            {% for loc in locations %}
+            <option value="{{ loc.code }}" label="{{ loc.code }} - {{ loc.description|default:"" }}"></option>
+            {% endfor %}
+        </datalist>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Cantidad</label>
+        <input type="number" class="form-control" name="quantity" min="1" required>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Punto de reorden destino</label>
+        <input type="number" class="form-control" name="destination_reorder_point" min="0" placeholder="Opcional">
+        <div class="form-text">Obligatorio si el producto no existe aún en la ubicación destino.</div>
+    </div>
+    <div class="col-12">
+        <label class="form-label">Motivo</label>
+        <input type="text" class="form-control" name="reason">
+    </div>
+    <div class="col-12">
+        <button class="btn btn-primary">Crear transferencia</button>
+    </div>
+</form>
+
+<h2>Transferencias internas (RF15)</h2>
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Producto</th>
+                <th>Origen</th>
+                <th>Destino</th>
+                <th>Cantidad</th>
+                <th>Estado</th>
+                <th>Solicitante</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for transfer in transfers %}
+            <tr>
+                <td>{{ transfer.id }}</td>
+                <td>{{ transfer.product.sku }}</td>
+                <td>{{ transfer.origin_location.code }}</td>
+                <td>{{ transfer.destination_location.code }}</td>
+                <td>{{ transfer.quantity }}</td>
+                <td>{{ transfer.get_status_display }}</td>
+                <td>{% if transfer.created_by %}{{ transfer.created_by.username }}{% else %}-{% endif %}</td>
+                <td>
+                    {% if transfer.status == 'pending' %}
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="approve">
+                        <input type="hidden" name="transfer_id" value="{{ transfer.id }}">
+                        <button class="btn btn-sm btn-success">Aprobar</button>
+                    </form>
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="reject">
+                        <input type="hidden" name="transfer_id" value="{{ transfer.id }}">
+                        <input type="text" name="comment" class="form-control form-control-sm d-inline-block w-auto" placeholder="Motivo" required>
+                        <button class="btn btn-sm btn-danger">Rechazar</button>
+                    </form>
+                    {% else %}
+                    <span class="text-muted">Procesada</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="text-center">No hay transferencias registradas.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

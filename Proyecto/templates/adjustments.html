@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}Ajustes de inventario{% endblock %}
+{% block content %}
+<h2>Crear ajuste</h2>
+<form method="post" class="row g-3 mb-4" id="adjustment-form">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="create">
+    <input type="hidden" name="confirm_reviewed" id="confirm-reviewed" value="0">
+    <div class="col-md-3">
+        <label class="form-label">Producto</label>
+        <input type="text"
+               class="form-control"
+               name="sku"
+               required
+               placeholder="Buscar SKU o nombre"
+               list="adjustment-products"
+               data-autocomplete-url="{% url 'products-autocomplete' %}"
+               data-datalist-id="adjustment-products"
+               data-value-field="sku"
+               data-label-field="label">
+        <datalist id="adjustment-products">
+            {% for product in products %}
+            <option value="{{ product.sku }}" label="{{ product.sku }} - {{ product.name }}"></option>
+            {% endfor %}
+        </datalist>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Ubicación</label>
+        <input type="text"
+               class="form-control"
+               name="location_code"
+               required
+               placeholder="Buscar ubicación"
+               list="adjustment-locations"
+               data-autocomplete-url="{% url 'locations-autocomplete' %}"
+               data-datalist-id="adjustment-locations"
+               data-value-field="code"
+               data-label-field="label">
+        <datalist id="adjustment-locations">
+            {% for loc in locations %}
+            <option value="{{ loc.code }}" label="{{ loc.code }} - {{ loc.description|default:"" }}"></option>
+            {% endfor %}
+        </datalist>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Cantidad del sistema</label>
+        <input type="number"
+               class="form-control"
+               id="system-quantity"
+               value="0"
+               readonly>
+        <div class="form-text">Se obtiene automáticamente del inventario.</div>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Cantidad física</label>
+        <input type="number" class="form-control" name="physical_quantity" min="0" required>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Motivo</label>
+        <textarea class="form-control" name="reason" rows="2" required></textarea>
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Evidencia (URL)</label>
+        <input type="url" class="form-control" name="attachment_url" placeholder="https://drive...">
+        <div class="form-text">Opcional, pero recomendada si |Δ| supera {{ tolerance }} unidades.</div>
+    </div>
+    <div class="col-12">
+        <div id="delta-summary"
+             class="alert alert-info"
+             role="alert"
+             data-tolerance="{{ tolerance }}">
+            Δ: <strong id="delta-value">0</strong> |
+            % diferencia: <strong id="delta-percent">0%</strong>
+            <span id="delta-flag" class="badge bg-warning text-dark ms-2 d-none">Supera tolerancia</span>
+        </div>
+    </div>
+    <div class="col-12 d-flex gap-2">
+        <button class="btn btn-primary">Enviar solicitud</button>
+        <button type="reset" class="btn btn-outline-secondary" id="reset-form">Limpiar</button>
+    </div>
+</form>
+
+<h2>Ajustes (RF13 / RF14)</h2>
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Producto</th>
+                <th>Ubicación</th>
+                <th>Delta</th>
+                <th>Estado</th>
+                <th>Creado por</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for adj in adjustments %}
+            <tr>
+                <td>{{ adj.id }}</td>
+                <td>{{ adj.product.sku }}</td>
+                <td>{{ adj.location.code }}</td>
+                <td>{{ adj.delta }}</td>
+                <td>{{ adj.get_status_display }}</td>
+                <td>{% if adj.created_by %}{{ adj.created_by.username }}{% else %}-{% endif %}</td>
+                <td>
+                    {% if adj.status == 'pending' %}
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="approve">
+                        <input type="hidden" name="adjustment_id" value="{{ adj.id }}">
+                        <button class="btn btn-sm btn-success">Aprobar</button>
+                    </form>
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="reject">
+                        <input type="hidden" name="adjustment_id" value="{{ adj.id }}">
+                        <input type="text" name="comment" class="form-control form-control-sm d-inline-block w-auto" placeholder="Motivo" required>
+                        <button class="btn btn-sm btn-danger">Rechazar</button>
+                    </form>
+                    {% else %}
+                    <span class="text-muted">Procesado</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center">No hay ajustes registrados.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    (function () {
+        const skuInput = document.querySelector('input[name="sku"]');
+        const locationInput = document.querySelector('input[name="location_code"]');
+        const physicalInput = document.querySelector('input[name="physical_quantity"]');
+        const systemInput = document.getElementById('system-quantity');
+        const deltaValueEl = document.getElementById('delta-value');
+        const deltaPercentEl = document.getElementById('delta-percent');
+        const deltaFlagEl = document.getElementById('delta-flag');
+        const summaryEl = document.getElementById('delta-summary');
+        const tolerance = parseInt(summaryEl.dataset.tolerance || '0', 10);
+        const form = document.getElementById('adjustment-form');
+        const confirmReviewedField = document.getElementById('confirm-reviewed');
+        let currentSystemQty = 0;
+
+        function updateDelta() {
+            const physical = parseInt(physicalInput.value || '0', 10);
+            const delta = physical - currentSystemQty;
+            deltaValueEl.textContent = isNaN(delta) ? '-' : delta;
+
+            let percent = 0;
+            if (currentSystemQty > 0) {
+                percent = ((delta / currentSystemQty) * 100);
+            }
+            deltaPercentEl.textContent = isNaN(percent) ? '-' : percent.toFixed(1) + '%';
+
+            const flagged = Math.abs(delta) > tolerance;
+            deltaFlagEl.classList.toggle('d-none', !flagged);
+        }
+
+        function fetchSystemQuantity() {
+            const sku = skuInput.value.trim();
+            const location = locationInput.value.trim();
+            if (!sku || !location) {
+                currentSystemQty = 0;
+                systemInput.value = 0;
+                updateDelta();
+                return;
+            }
+            const url = "{% url 'system-quantity-api' %}?sku=" + encodeURIComponent(sku) + "&location=" + encodeURIComponent(location);
+            fetch(url)
+                .then(function (response) {
+                    if (!response.ok) {
+                        throw new Error('Error');
+                    }
+                    return response.json();
+                })
+                .then(function (data) {
+                    currentSystemQty = data.quantity || 0;
+                    systemInput.value = currentSystemQty;
+                    updateDelta();
+                })
+                .catch(function () {
+                    currentSystemQty = 0;
+                    systemInput.value = 0;
+                    updateDelta();
+                });
+        }
+
+        skuInput.addEventListener('change', fetchSystemQuantity);
+        locationInput.addEventListener('change', fetchSystemQuantity);
+        physicalInput.addEventListener('input', updateDelta);
+
+        form.addEventListener('submit', function (event) {
+            const confirmed = confirm('¿Ya verificaste que la cantidad física es correcta y deseas registrar el ajuste?');
+            if (!confirmed) {
+                event.preventDefault();
+                confirmReviewedField.value = '0';
+                form.reset();
+                setTimeout(function () {
+                    currentSystemQty = 0;
+                    systemInput.value = 0;
+                    updateDelta();
+                }, 0);
+                return;
+            }
+            confirmReviewedField.value = '1';
+        });
+
+        document.getElementById('reset-form').addEventListener('click', function () {
+            setTimeout(function () {
+                currentSystemQty = 0;
+                systemInput.value = 0;
+                updateDelta();
+            }, 0);
+        });
+    })();
+</script>
+{% endblock %}

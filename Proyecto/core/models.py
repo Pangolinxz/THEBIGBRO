@@ -19,6 +19,19 @@ class TransferStatus(models.TextChoices):
     APPROVED = "approved", "Aprobada"
     REJECTED = "rejected", "Rechazada"
 
+class OrderStatus(models.TextChoices):
+    CREATED = "created", "Creado"
+    RESERVED = "reserved", "Reservado"
+    DISPATCHED = "dispatched", "Despachado"
+    CLOSED = "closed", "Cerrado"
+
+
+class PaymentMethod(models.TextChoices):
+    CASH = "cash", "Efectivo"
+    CARD = "card", "Tarjeta"
+    TRANSFER = "transfer", "Transferencia"
+    OTHER = "other", "Otro"
+
 class Rol(models.Model):
     name = models.CharField(max_length=255, unique=True)
     class Meta:
@@ -55,6 +68,8 @@ class Product(models.Model):
 class Location(models.Model):
     code = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True)
+    capacity = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
     class Meta:
         db_table = 'location'
     def __str__(self):
@@ -65,11 +80,18 @@ class Inventory(models.Model):
     location = models.ForeignKey(Location, on_delete=models.PROTECT)
     quantity = models.IntegerField()
     updated_at = models.DateTimeField()
+    custom_reorder_point = models.IntegerField(null=True, blank=True)
     class Meta:
         db_table = 'inventory'
         constraints = [models.UniqueConstraint(fields=['product', 'location'], name='inventory_index_0')]
     def __str__(self):
         return f"{self.product} @ {self.location} = {self.quantity}"
+
+    @property
+    def effective_reorder_point(self) -> int:
+        if self.custom_reorder_point is not None:
+            return self.custom_reorder_point
+        return self.product.reorder_point
 
 class InventoryTransaction(models.Model):
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
@@ -83,8 +105,24 @@ class InventoryTransaction(models.Model):
 
 class Order(models.Model):
     seller_id = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    status = models.CharField(max_length=255)
-    created_at = models.DateTimeField()
+    status = models.CharField(
+        max_length=32,
+        choices=OrderStatus.choices,
+        default=OrderStatus.CREATED,
+    )
+    customer_name = models.CharField(max_length=255, blank=True)
+    customer_address = models.TextField(blank=True)
+    contact_name = models.CharField(max_length=255, blank=True)
+    contact_phone = models.CharField(max_length=64, blank=True)
+    payment_method = models.CharField(
+        max_length=32,
+        choices=PaymentMethod.choices,
+        default=PaymentMethod.CASH,
+    )
+    departure_time = models.DateTimeField(null=True, blank=True)
+    estimated_arrival_time = models.DateTimeField(null=True, blank=True)
+    actual_arrival_time = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = 'order'
 
@@ -93,8 +131,20 @@ class OrderItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     quantity = models.IntegerField()
     reserved = models.BooleanField(default=False)
+    location = models.ForeignKey(Location, on_delete=models.PROTECT, null=True, blank=True)
     class Meta:
         db_table = 'order_item'
+
+
+class DeliveryAlert(models.Model):
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name="delivery_alert")
+    due_time = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved = models.BooleanField(default=False)
+    message = models.TextField(blank=True)
+
+    class Meta:
+        db_table = "delivery_alert"
 
 class StockAlert(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
@@ -201,6 +251,7 @@ class InternalTransfer(models.Model):
     )
     processed_at = models.DateTimeField(null=True, blank=True)
     resolution_comment = models.TextField(blank=True)
+    destination_reorder_point = models.IntegerField(null=True, blank=True)
 
     class Meta:
         db_table = "internal_transfer"

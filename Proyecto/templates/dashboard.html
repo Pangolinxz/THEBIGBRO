@@ -1,0 +1,419 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<form method="get" class="card card-body mb-4">
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label">Producto</label>
+            <input type="text"
+                   class="form-control"
+                   name="sku"
+                   placeholder="Buscar por SKU o nombre..."
+                   value="{{ filter_values.sku }}"
+                   list="dashboard-products"
+                   data-autocomplete-url="{% url 'products-autocomplete' %}"
+                   data-datalist-id="dashboard-products"
+                   data-value-field="sku"
+                   data-label-field="label">
+            <datalist id="dashboard-products"></datalist>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Ubicación</label>
+            <input type="text"
+                   class="form-control"
+                   name="location"
+                   placeholder="Seleccionar ubicación..."
+                   value="{{ filter_values.location }}"
+                   list="dashboard-locations"
+                   data-autocomplete-url="{% url 'locations-autocomplete' %}"
+                   data-datalist-id="dashboard-locations"
+                   data-value-field="code"
+                   data-label-field="label">
+            <datalist id="dashboard-locations"></datalist>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Desde</label>
+            <input type="date" class="form-control" name="date_from" value="{{ filter_values.date_from }}">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Hasta</label>
+            <input type="date" class="form-control" name="date_to" value="{{ filter_values.date_to }}">
+        </div>
+        <div class="col-12 d-flex gap-2">
+            <button class="btn btn-primary">Aplicar filtros</button>
+            <a class="btn btn-outline-secondary" href="{% url 'dashboard' %}">Limpiar</a>
+        </div>
+    </div>
+</form>
+
+{% if active_filters %}
+<div class="mb-3">
+    {% for chip in active_filters %}
+    <span class="badge bg-secondary me-2">{{ chip.label }}: {{ chip.value }}</span>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card text-bg-primary h-100">
+            <div class="card-body">
+                <h5 class="card-title">Ajustes pendientes</h5>
+                <p class="display-6">{{ pending_adjustments }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-bg-warning h-100">
+            <div class="card-body">
+                <h5 class="card-title">Transferencias pendientes</h5>
+                <p class="display-6">{{ pending_transfers }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-bg-success h-100">
+            <div class="card-body">
+                <h5 class="card-title">Inventario total</h5>
+                <p class="display-6">{{ total_inventory }}</p>
+                <small class="text-white">Productos: {{ total_products }}</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-bg-danger h-100">
+            <div class="card-body">
+                <h5 class="card-title">Bajos en stock</h5>
+                <p class="display-6">{{ low_stock_items }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-primary h-100">
+            <div class="card-body">
+                <h6 class="card-title text-primary">Ingresos hoy</h6>
+                <p class="fs-3 mb-0">{{ ingress_today }}</p>
+                <small class="text-muted">Últimas 24h</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-warning h-100">
+            <div class="card-body">
+                <h6 class="card-title text-warning">Egresos hoy</h6>
+                <p class="fs-3 mb-0">{{ egress_today }}</p>
+                <small class="text-muted">Últimas 24h</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-danger h-100">
+            <div class="card-body">
+                <h6 class="card-title text-danger">Alertas automáticas</h6>
+                <p class="fs-3 mb-0">{{ auto_alert_count }}</p>
+                <small class="text-muted">Stock bajo</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-secondary h-100">
+            <div class="card-body">
+                <h6 class="card-title text-secondary">Alertas manuales</h6>
+                <p class="fs-3 mb-0">{{ manual_alert_count }}</p>
+                <small class="text-muted">Reportadas</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-info h-100">
+            <div class="card-body">
+                <h6 class="card-title text-info">Rotación inventario</h6>
+                <p class="fs-3 mb-0">
+                    {% if inventory_turnover is not None %}
+                        {{ inventory_turnover }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </p>
+                <small class="text-muted">Egresos / Inventario</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-success h-100">
+            <div class="card-body">
+                <h6 class="card-title text-success">Fill rate pedidos</h6>
+                <p class="fs-3 mb-0">
+                    {% if fill_rate is not None %}
+                        {{ fill_rate }}%
+                    {% else %}
+                        —
+                    {% endif %}
+                </p>
+                <small class="text-muted">Reservado / solicitado</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-warning h-100">
+            <div class="card-body">
+                <h6 class="card-title text-warning">Días de inventario</h6>
+                <p class="fs-3 mb-0">
+                    {% if days_of_inventory is not None %}
+                        {{ days_of_inventory }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </p>
+                <small class="text-muted">Inventario / egreso diario</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-secondary h-100">
+            <div class="card-body">
+                <h6 class="card-title text-secondary">Pedidos por estado</h6>
+                {% if orders_by_status %}
+                <ul class="list-unstyled mb-0">
+                    {% for item in orders_by_status %}
+                    <li>{{ item.status_label }}: <strong>{{ item.total }}</strong></li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="mb-0 text-muted">Sin datos.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<h4>Movimientos recientes</h4>
+<div class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Producto</th>
+                <th>Ubicación</th>
+                <th>Usuario</th>
+                <th>Acción</th>
+                <th>Cantidad</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tx in recent_transactions %}
+            <tr>
+                <td>{{ tx.id }}</td>
+                <td>{{ tx.product.sku }}</td>
+                <td>{{ tx.location.code }}</td>
+                <td>{% if tx.user %}{{ tx.user.username }}{% else %}-{% endif %}</td>
+                <td>{{ tx.display_type }}</td>
+                <td>{{ tx.quantity }}</td>
+                <td>{{ tx.created_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center">Sin movimientos recientes.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <h4>Inventario por producto</h4>
+        {% if not top_products_out %}
+        <p class="text-muted">Sin datos para el criterio seleccionado.</p>
+        {% else %}
+        <canvas id="egressChart" height="240"></canvas>
+        <div class="table-responsive mt-3">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for prod in top_products_out %}
+                    <tr>
+                        <td>{{ prod.product__sku }}</td>
+                        <td>{{ prod.total }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="2" class="text-center">Sin datos.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+    <div class="col-md-6">
+        <h4>Inventario por ubicación</h4>
+        {% if not inventory_by_location %}
+            <p class="text-muted">Sin datos para el criterio seleccionado.</p>
+        {% else %}
+        <canvas id="dailyChart" height="240"></canvas>
+        <div class="table-responsive mt-3">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Ubicación</th>
+                        <th>Cantidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for loc in inventory_by_location %}
+                    <tr>
+                        <td>{{ loc.location__code }}</td>
+                        <td>{{ loc.total }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="2" class="text-center">Sin datos.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <h4>Movimientos últimos 7 días</h4>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Cantidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for day in daily_movements %}
+                    <tr>
+                        <td>{{ day.day|date:"Y-m-d" }}</td>
+                        <td>{{ day.total }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="2" class="text-center">Sin datos.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <h4>Movimientos por ubicación</h4>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Ubicación</th>
+                        <th>Total movimientos</th>
+                        <th>Ingresos</th>
+                        <th>Egresos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in movements_by_location %}
+                    <tr>
+                        <td>{{ item.location__code|default:"—" }}</td>
+                        <td>{{ item.total_movements }}</td>
+                        <td>{{ item.ingress_qty|default:"0" }}</td>
+                        <td>{{ item.egress_qty|default:"0" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center">Sin datos.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{{ inventory_by_location|json_script:"daily-data" }}
+{{ top_products_out|json_script:"egress-data" }}
+<script>
+    (function () {
+        function buildDataset(items, labelField, valueField) {
+            var labels = [];
+            var values = [];
+            items.forEach(function (item) {
+                labels.push(item[labelField]);
+                values.push(item[valueField] || 0);
+            });
+            return { labels: labels, values: values };
+        }
+
+        var dailyDataEl = document.getElementById("daily-data");
+        var egressDataEl = document.getElementById("egress-data");
+        var dailyItems = dailyDataEl ? JSON.parse(dailyDataEl.textContent) : [];
+        var egressItems = egressDataEl ? JSON.parse(egressDataEl.textContent) : [];
+
+        if (dailyItems.length && window.Chart) {
+            var dailyCtx = document.getElementById("dailyChart").getContext("2d");
+            var dailyDataset = buildDataset(dailyItems, "location__code", "total");
+            new Chart(dailyCtx, {
+                type: "bar",
+                data: {
+                    labels: dailyDataset.labels,
+                    datasets: [
+                        {
+                            label: "Inventario",
+                            data: dailyDataset.values,
+                            backgroundColor: "rgba(13,110,253,0.6)",
+                        },
+                    ],
+                },
+                options: {
+                    plugins: {
+                        legend: { display: false },
+                    },
+                    scales: {
+                        y: { beginAtZero: true },
+                    },
+                },
+            });
+        }
+
+        if (egressItems.length && window.Chart) {
+            var egressCtx = document.getElementById("egressChart").getContext("2d");
+            var egressDataset = buildDataset(
+                egressItems,
+                "product__sku",
+                "total"
+            );
+            new Chart(egressCtx, {
+                type: "bar",
+                data: {
+                    labels: egressDataset.labels,
+                    datasets: [
+                        {
+                            label: "Egresos",
+                            data: egressDataset.values,
+                            backgroundColor: "rgba(220,53,69,0.6)",
+                        },
+                    ],
+                },
+                options: {
+                    plugins: {
+                        legend: { display: false },
+                    },
+                    scales: {
+                        y: { beginAtZero: true },
+                    },
+                },
+            });
+        }
+    })();
+</script>
+{% endblock %}

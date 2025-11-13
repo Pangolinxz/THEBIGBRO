@@ -44,6 +44,10 @@ def get_audit_logs(filters: Optional[Dict[str, str]] = None):
     if product_id:
         qs = qs.filter(product_id=product_id)
 
+    product_sku = (filters.get("product_sku") or filters.get("sku") or "").strip()
+    if product_sku:
+        qs = qs.filter(product__sku__iexact=product_sku)
+
     location_id = filters.get("location_id")
     if location_id:
         qs = qs.filter(location_id=location_id)
