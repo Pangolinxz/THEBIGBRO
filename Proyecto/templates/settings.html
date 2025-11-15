@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+
+{% block title %}Configuración - LogiTrace{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header border-0">
+                <h2 class="mb-0"><i class="bi bi-gear"></i> Configuración del Sistema</h2>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <h5 class="mb-3"><i class="bi bi-palette"></i> Tema Visual</h5>
+                        <div class="d-grid gap-3">
+                            <button class="btn btn-lg theme-preview-btn" id="light-theme-btn" data-theme="light">
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                                    <div class="text-start">
+                                        <small class="d-block">Modo Claro</small>
+                                        <span style="font-size: 28px;">☀️</span>
+                                    </div>
+                                    <div id="light-check" style="font-size: 24px; display: none;">✓</div>
+                                </div>
+                            </button>
+
+                            <button class="btn btn-lg theme-preview-btn" id="dark-theme-btn" data-theme="dark">
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                                    <div class="text-start">
+                                        <small class="d-block">Modo Oscuro</small>
+                                        <span style="font-size: 28px;">🌙</span>
+                                    </div>
+                                    <div id="dark-check" style="font-size: 24px; display: none;">✓</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h5 class="mb-3"><i class="bi bi-info-circle"></i> Información</h5>
+                        <div class="list-group list-group-flush">
+                            {% if user.is_authenticated %}
+                            <div class="list-group-item border-0">
+                                <strong>Usuario:</strong>
+                                <br>
+                                {{ user.username }}
+                            </div>
+                            <div class="list-group-item border-0">
+                                <strong>Rol:</strong>
+                                <br>
+                                {% if user.role %}
+                                    <span class="badge bg-info">{{ user.role.name }}</span>
+                                {% else %}
+                                    <span class="text-muted">Sin rol asignado</span>
+                                {% endif %}
+                            </div>
+                            <div class="list-group-item border-0">
+                                <strong>Email:</strong>
+                                <br>
+                                {{ user.email }}
+                            </div>
+                            <div class="list-group-item border-0">
+                                <strong>Tema Guardado:</strong>
+                                <br>
+                                <span id="saved-theme">Cargando...</span>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i> Por favor, inicia sesión para ver tu información.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+            <div class="card-footer border-0 text-center">
+                <small class="text-muted">
+                    Tu preferencia de tema se guarda automáticamente en el navegador
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .theme-preview-btn {
+        padding: 20px;
+        text-align: left;
+        position: relative;
+        border: 3px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    html[data-theme="light"] .theme-preview-btn {
+        background: rgba(82, 183, 136, 0.1);
+        color: #2D3436;
+        border-color: rgba(82, 183, 136, 0.3);
+    }
+
+    html[data-theme="light"] .theme-preview-btn:hover {
+        background: rgba(82, 183, 136, 0.2);
+        border-color: #52B788;
+    }
+
+    html[data-theme="dark"] .theme-preview-btn {
+        background: rgba(168, 85, 247, 0.1);
+        color: #E0E0E0;
+        border-color: rgba(168, 85, 247, 0.3);
+    }
+
+    html[data-theme="dark"] .theme-preview-btn:hover {
+        background: rgba(168, 85, 247, 0.2);
+        border-color: #A855F7;
+    }
+
+    .theme-preview-btn.active {
+        border-color: currentColor;
+        font-weight: 600;
+    }
+
+    html[data-theme="light"] .theme-preview-btn.active {
+        background: rgba(82, 183, 136, 0.3);
+        border-color: #52B788;
+    }
+
+    html[data-theme="dark"] .theme-preview-btn.active {
+        background: rgba(168, 85, 247, 0.3);
+        border-color: #A855F7;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const lightThemeBtn = document.getElementById('light-theme-btn');
+        const darkThemeBtn = document.getElementById('dark-theme-btn');
+        const lightCheck = document.getElementById('light-check');
+        const darkCheck = document.getElementById('dark-check');
+        const savedThemeDisplay = document.getElementById('saved-theme');
+        const htmlElement = document.documentElement;
+
+        
+        function updateThemeDisplay() {
+            const currentTheme = htmlElement.getAttribute('data-theme') || 'light';
+            savedThemeDisplay.textContent = currentTheme === 'light' ? 'Modo Claro (Light)' : 'Modo Oscuro (Dark)';
+            
+            if (currentTheme === 'light') {
+                lightThemeBtn.classList.add('active');
+                darkThemeBtn.classList.remove('active');
+                lightCheck.style.display = 'block';
+                darkCheck.style.display = 'none';
+            } else {
+                lightThemeBtn.classList.remove('active');
+                darkThemeBtn.classList.add('active');
+                lightCheck.style.display = 'none';
+                darkCheck.style.display = 'block';
+            }
+        }
+
+        
+        updateThemeDisplay();
+
+       
+        lightThemeBtn.addEventListener('click', function () {
+            htmlElement.setAttribute('data-theme', 'light');
+            localStorage.setItem('logitrace-theme', 'light');
+            updateThemeDisplay();
+        });
+
+        
+        darkThemeBtn.addEventListener('click', function () {
+            htmlElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('logitrace-theme', 'dark');
+            updateThemeDisplay();
+        });
+
+        
+        window.addEventListener('storage', function (e) {
+            if (e.key === 'logitrace-theme') {
+                htmlElement.setAttribute('data-theme', e.newValue);
+                updateThemeDisplay();
+            }
+        });
+    });
+</script>
+{% endblock %}

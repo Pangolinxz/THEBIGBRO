@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Registrar producto{% endblock %}
+{% block content %}
+<h2>Registrar producto</h2>
+<form method="post" class="row g-3 mb-4">
+    {% csrf_token %}
+    <div class="col-md-3">
+        <label class="form-label">Prefijo SKU</label>
+        <input type="text" class="form-control" name="sku_prefix" value="{{ sku_prefix_value }}" placeholder="Ej: CAR, CAJA" required>
+        <div class="form-text">El sistema agregará el número correlativo.</div>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">SKU generado</label>
+        <input type="text" class="form-control" value="{{ sku_preview }}" placeholder="Se asignará al guardar" readonly>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Nombre</label>
+        <input type="text" class="form-control" name="name" required>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Reorden</label>
+        <input type="number" class="form-control" name="reorder_point" min="0" value="0">
+    </div>
+    <div class="col-md-2">
+        <label class="form-label">Categoría</label>
+        <select class="form-select" name="category">
+            {% for value, label in categories %}
+            <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-12">
+        <label class="form-label">Descripción</label>
+        <textarea class="form-control" rows="2" name="description"></textarea>
+    </div>
+    <div class="col-12 d-flex gap-2">
+        <button class="btn btn-primary">Guardar producto</button>
+        <a href="{% url 'products-ui' %}" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

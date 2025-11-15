@@ -1,88 +1,117 @@
 {% extends "base.html" %}
 {% block title %}Productos{% endblock %}
 {% block content %}
-<h2>Registrar producto</h2>
-<form method="post" class="row g-3 mb-4">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="create">
-    <div class="col-md-3">
-        <label class="form-label">Prefijo SKU</label>
-        <input type="text" class="form-control" name="sku_prefix" value="{{ sku_prefix_value }}" placeholder="Ej: CAR, CAJA" required>
-        <div class="form-text">El sistema agregará el número correlativo.</div>
-    </div>
-    <div class="col-md-3">
-        <label class="form-label">SKU generado</label>
-        <input type="text" class="form-control" value="{{ sku_preview }}" placeholder="Se asignará al guardar" readonly>
-    </div>
-    <div class="col-md-3">
-        <label class="form-label">Nombre</label>
-        <input type="text" class="form-control" name="name" required>
-    </div>
-    <div class="col-md-2">
-        <label class="form-label">Reorden</label>
-        <input type="number" class="form-control" name="reorder_point" min="0" value="0">
-    </div>
-    <div class="col-md-2">
-        <label class="form-label">Categoría</label>
-        <select class="form-select" name="category">
-            {% for value, label in categories %}
-            <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-md-12">
-        <label class="form-label">Descripción</label>
-        <textarea class="form-control" rows="2" name="description"></textarea>
-    </div>
-    <div class="col-12">
-        <button class="btn btn-primary">Guardar producto</button>
-    </div>
-</form>
 
-{% if edit_product %}
-<div class="card mb-4">
-    <div class="card-header">Editar producto {{ edit_product.sku }}</div>
-    <div class="card-body">
-        <form method="post" class="row g-3">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="update">
-            <input type="hidden" name="product_id" value="{{ edit_product.id }}">
-            <div class="col-md-3">
-                <label class="form-label">SKU</label>
-                <input type="text" class="form-control" value="{{ edit_product.sku }}" readonly>
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <h2>Catálogo (últimos 100)</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal">
+        <i class="bi bi-plus-circle"></i> Nuevo producto
+    </button>
+</div>
+
+
+<div class="modal fade" id="productModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nuevo producto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="col-md-3">
-                <label class="form-label">Nombre</label>
-                <input type="text" class="form-control" name="name_edit" value="{{ edit_product.name }}" required>
+            <div class="modal-body">
+                <form method="post" class="row g-3" id="productForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create">
+                    <div class="col-md-3">
+                        <label class="form-label">Prefijo SKU</label>
+                        <input type="text" class="form-control" name="sku_prefix" value="{{ sku_prefix_value }}" placeholder="Ej: CAR, CAJA" required>
+                        <div class="form-text">El sistema agregará el número correlativo.</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">SKU generado</label>
+                        <input type="text" class="form-control" value="{{ sku_preview }}" placeholder="Se asignará al guardar" readonly>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Nombre</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Reorden</label>
+                        <input type="number" class="form-control" name="reorder_point" min="0" value="0">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Categoría</label>
+                        <select class="form-select" name="category">
+                            {% for value, label in categories %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control" rows="2" name="description"></textarea>
+                    </div>
+                </form>
             </div>
-            <div class="col-md-2">
-                <label class="form-label">Reorden</label>
-                <input type="number" class="form-control" name="reorder_point_edit" min="0" value="{{ edit_product.reorder_point }}" required>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('productForm').submit()">Guardar producto</button>
             </div>
-            <div class="col-md-2">
-                <label class="form-label">Categoría</label>
-                <select class="form-select" name="category_edit">
-                    {% for value, label in categories %}
-                    <option value="{{ value }}" {% if value == edit_product.category %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-12">
-                <label class="form-label">Descripción</label>
-                <textarea class="form-control" rows="2" name="description_edit">{{ edit_product.description }}</textarea>
-            </div>
-            <div class="col-12 d-flex gap-2">
-                <button class="btn btn-success">Actualizar</button>
-                <a class="btn btn-outline-secondary" href="{% url 'products-ui' %}">Cancelar</a>
-            </div>
-        </form>
+        </div>
     </div>
 </div>
+
+
+{% if edit_product %}
+<div class="modal fade show" id="editProductModal" tabindex="-1" style="display: block;">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar producto {{ edit_product.sku }}</h5>
+                <a href="{% url 'products-ui' %}" class="btn-close"></a>
+            </div>
+            <div class="modal-body">
+                <form method="post" class="row g-3" id="editProductForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update">
+                    <input type="hidden" name="product_id" value="{{ edit_product.id }}">
+                    <div class="col-md-3">
+                        <label class="form-label">SKU</label>
+                        <input type="text" class="form-control" value="{{ edit_product.sku }}" readonly>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Nombre</label>
+                        <input type="text" class="form-control" name="name_edit" value="{{ edit_product.name }}" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Reorden</label>
+                        <input type="number" class="form-control" name="reorder_point_edit" min="0" value="{{ edit_product.reorder_point }}" required>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Categoría</label>
+                        <select class="form-select" name="category_edit">
+                            {% for value, label in categories %}
+                            <option value="{{ value }}" {% if value == edit_product.category %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control" rows="2" name="description_edit">{{ edit_product.description }}</textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <a href="{% url 'products-ui' %}" class="btn btn-secondary">Cancelar</a>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('editProductForm').submit()">Actualizar</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal-backdrop fade show" style="display: block;"></div>
 {% endif %}
 
-<h2>Catálogo (últimos 100)</h2>
 <div class="table-responsive">
-    <table class="table table-striped">
+    <table class="table modern-table">
         <thead>
             <tr>
                 <th>SKU</th>

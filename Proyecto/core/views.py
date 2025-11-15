@@ -288,6 +288,55 @@ def dashboard_view(request):
 
 @login_required
 def ingress_view(request):
+    """Display list of recent ingress records. Handle form submissions from modal."""
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "create":
+            try:
+                product_id = request.POST.get("product_id")
+                location_id = request.POST.get("location_id")
+                quantity = int(request.POST.get("quantity", 0))
+                movement_type = request.POST.get("movement_type", "purchase")
+                
+                product = Product.objects.get(pk=product_id)
+                location = Location.objects.get(pk=location_id)
+                
+                if quantity <= 0:
+                    messages.error(request, "La cantidad debe ser mayor que cero.")
+                else:
+                    payload = {
+                        "sku": product.sku,
+                        "location_code": location.code,
+                        "quantity": quantity,
+                        "observations": f"Tipo: {movement_type}",
+                    }
+                    register_product_ingress(payload, created_by=request.user)
+                    messages.success(request, "Ingreso registrado correctamente.")
+                    return redirect("ingress-ui")
+            except (Product.DoesNotExist, Location.DoesNotExist, ValueError):
+                messages.error(request, "Datos inválidos para el ingreso.")
+            except IngressError as exc:
+                messages.error(request, str(exc))
+    
+    audits = InventoryAudit.objects.select_related("product", "location").order_by(
+        "-created_at"
+    )[:50]
+    products = Product.objects.all()
+    locations = Location.objects.all()
+    return render(
+        request,
+        "ingress.html",
+        {
+            "audits": audits,
+            "products": products,
+            "locations": locations,
+        },
+    )
+
+
+@login_required
+def ingress_create_view(request):
+    """Create a new ingress record."""
     form_data = {
         "sku": "",
         "location_code": "",
@@ -386,16 +435,12 @@ def ingress_view(request):
                             except Exception as exc:
                                 messages.error(request, f"No se pudo registrar el ingreso: {exc}")
 
-    audits = InventoryAudit.objects.select_related("product", "location").order_by(
-        "-created_at"
-    )[:20]
     products = Product.objects.all()
     locations = Location.objects.all()
     return render(
         request,
-        "ingress.html",
+        "ingress_create.html",
         {
-            "audits": audits,
             "products": products,
             "locations": locations,
             "form_data": form_data,
@@ -407,30 +452,42 @@ def ingress_view(request):
 @login_required
 @require_role("Supervisor")
 def adjustments_view(request):
-    tolerance = get_adjustment_tolerance()
+    """Display list of stock adjustments with approval/rejection actions."""
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "create":
+            tolerance = get_adjustment_tolerance()
             payload = {
-                "sku": request.POST.get("sku"),
-                "location_code": request.POST.get("location_code"),
-                "physical_quantity": request.POST.get("physical_quantity"),
+                "sku": request.POST.get("product_id"),
+                "location_code": request.POST.get("location_id"),
+                "physical_quantity": request.POST.get("delta"),
                 "reason": request.POST.get("reason"),
-                "attachment_url": request.POST.get("attachment_url", ""),
+                "attachment_url": "",
             }
-            confirm_reviewed = request.POST.get("confirm_reviewed") == "1"
-            if not confirm_reviewed:
-                messages.error(
-                    request,
-                    "Debes confirmar que la cantidad física fue verificada antes de enviar el ajuste.",
-                )
-                return redirect("adjustments-ui")
             try:
+                # Map field names from modal form to payload
+                product_id = request.POST.get("product_id")
+                location_id = request.POST.get("location_id")
+                delta = request.POST.get("delta")
+                reason = request.POST.get("reason", "")
+                
+                product = Product.objects.get(pk=product_id)
+                location = Location.objects.get(pk=location_id)
+                
+                payload["sku"] = product.sku
+                payload["location_code"] = location.code
+                payload["physical_quantity"] = delta
+                payload["reason"] = reason
+                
                 create_adjustment_request(payload, created_by=request.user)
                 messages.success(request, "Solicitud de ajuste creada.")
                 return redirect("adjustments-ui")
+            except (Product.DoesNotExist, Location.DoesNotExist):
+                messages.error(request, "Producto o ubicación no encontrado.")
             except AdjustmentRequestError as exc:
                 messages.error(request, str(exc))
+            except Exception as exc:
+                messages.error(request, f"Error al crear el ajuste: {exc}")
         elif action in {"approve", "reject"}:
             adjustment_id = request.POST.get("adjustment_id")
             comment = request.POST.get("comment", "")
@@ -459,6 +516,46 @@ def adjustments_view(request):
             "adjustments": adjustments,
             "products": products,
             "locations": locations,
+        },
+    )
+
+
+@login_required
+@require_role("Supervisor")
+def adjustments_create_view(request):
+    """Create new stock adjustment request."""
+    tolerance = get_adjustment_tolerance()
+    
+    if request.method == "POST":
+        payload = {
+            "sku": request.POST.get("sku"),
+            "location_code": request.POST.get("location_code"),
+            "physical_quantity": request.POST.get("physical_quantity"),
+            "reason": request.POST.get("reason"),
+            "attachment_url": request.POST.get("attachment_url", ""),
+        }
+        confirm_reviewed = request.POST.get("confirm_reviewed") == "1"
+        if not confirm_reviewed:
+            messages.error(
+                request,
+                "Debes confirmar que la cantidad física fue verificada antes de enviar el ajuste.",
+            )
+            return redirect("adjustments-create-ui")
+        try:
+            create_adjustment_request(payload, created_by=request.user)
+            messages.success(request, "Solicitud de ajuste creada.")
+            return redirect("adjustments-ui")
+        except AdjustmentRequestError as exc:
+            messages.error(request, str(exc))
+    
+    products = Product.objects.all()
+    locations = Location.objects.all()
+    return render(
+        request,
+        "adjustments_create.html",
+        {
+            "products": products,
+            "locations": locations,
             "tolerance": tolerance,
         },
     )
@@ -467,80 +564,49 @@ def adjustments_view(request):
 @login_required
 @require_role("Supervisor")
 def transfers_view(request):
+    """Display list of internal transfers with approval/rejection actions."""
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "create":
-            sku = (request.POST.get("sku") or "").strip()
-            origin_code = (request.POST.get("origin_code") or "").strip()
-            destination_code = (request.POST.get("destination_code") or "").strip()
-            reason = request.POST.get("reason", "")
-            destination_reorder_value = request.POST.get("destination_reorder_point")
-            destination_reorder_point = None
             try:
-                product = Product.objects.get(sku=sku)
-            except Product.DoesNotExist:
-                messages.error(request, "El producto indicado no existe.")
-            else:
-                try:
-                    origin = Location.objects.get(code=origin_code)
-                    destination = Location.objects.get(code=destination_code)
-                except Location.DoesNotExist:
-                    messages.error(request, "La ubicación indicada no existe.")
+                product_id = request.POST.get("product_id")
+                origin_id = request.POST.get("origin_location_id")
+                destination_id = request.POST.get("destination_location_id")
+                quantity = int(request.POST.get("quantity", 0))
+                
+                product = Product.objects.get(pk=product_id)
+                origin = Location.objects.get(pk=origin_id)
+                destination = Location.objects.get(pk=destination_id)
+                
+                if origin == destination:
+                    messages.error(request, "El origen y destino deben ser distintos.")
+                elif quantity <= 0:
+                    messages.error(request, "La cantidad debe ser mayor que cero.")
                 else:
-                    if origin == destination:
-                        messages.error(request, "El origen y destino deben ser distintos.")
+                    origin_inventory = (
+                        Inventory.objects.filter(product=product, location=origin)
+                        .values("quantity")
+                        .first()
+                    )
+                    available = origin_inventory["quantity"] if origin_inventory else 0
+                    if available < quantity:
+                        messages.error(
+                            request,
+                            f"Inventario insuficiente en {origin.code}. Disponible: {available}.",
+                        )
                     else:
-                        try:
-                            quantity = int(request.POST.get("quantity", 0))
-                            if quantity <= 0:
-                                raise ValueError
-                        except (TypeError, ValueError):
-                            messages.error(request, "La cantidad debe ser mayor que cero.")
-                        else:
-                            destination_exists = Inventory.objects.filter(
-                                product=product, location=destination
-                            ).exists()
-                            origin_inventory = (
-                                Inventory.objects.filter(product=product, location=origin)
-                                .values("quantity")
-                                .first()
-                            )
-                            available = origin_inventory["quantity"] if origin_inventory else 0
-                            if available < quantity:
-                                messages.error(
-                                    request,
-                                    f"Inventario insuficiente en {origin.code}. Disponible: {available}.",
-                                )
-                                return redirect("transfers-ui")
-                            if destination_reorder_value not in {None, ""}:
-                                try:
-                                    destination_reorder_point = int(destination_reorder_value)
-                                    if destination_reorder_point < 0:
-                                        raise ValueError
-                                except (TypeError, ValueError):
-                                    messages.error(
-                                        request,
-                                        "El punto de reorden destino debe ser un entero mayor o igual a 0.",
-                                    )
-                                    return redirect("transfers-ui")
-                            if not destination_exists and destination_reorder_point is None:
-                                messages.error(
-                                    request,
-                                    "Debes indicar el punto de reorden destino para una ubicación nueva.",
-                                )
-                                return redirect("transfers-ui")
-                            else:
-                                InternalTransfer.objects.create(
-                                    product=product,
-                                    origin_location=origin,
-                                    destination_location=destination,
-                                    quantity=quantity,
-                                    reason=reason,
-                                    created_by=request.user,
-                                    destination_reorder_point=destination_reorder_point,
-                                )
-                                messages.success(request, "Transferencia creada.")
-                                return redirect("transfers-ui")
+                        InternalTransfer.objects.create(
+                            product=product,
+                            origin_location=origin,
+                            destination_location=destination,
+                            quantity=quantity,
+                            reason="",
+                            created_by=request.user,
+                        )
+                        messages.success(request, "Transferencia creada.")
+                        return redirect("transfers-ui")
+            except (Product.DoesNotExist, Location.DoesNotExist, ValueError):
+                messages.error(request, "Datos inválidos para la transferencia.")
         elif action in {"approve", "reject"}:
             transfer_id = request.POST.get("transfer_id")
             comment = request.POST.get("comment", "")
@@ -566,6 +632,92 @@ def transfers_view(request):
         request,
         "transfers.html",
         {"transfers": transfers, "products": products, "locations": locations},
+    )
+
+
+@login_required
+@require_role("Supervisor")
+def transfers_create_view(request):
+    """Create new internal transfer."""
+    if request.method == "POST":
+        sku = (request.POST.get("sku") or "").strip()
+        origin_code = (request.POST.get("origin_code") or "").strip()
+        destination_code = (request.POST.get("destination_code") or "").strip()
+        reason = request.POST.get("reason", "")
+        destination_reorder_value = request.POST.get("destination_reorder_point")
+        destination_reorder_point = None
+        try:
+            product = Product.objects.get(sku=sku)
+        except Product.DoesNotExist:
+            messages.error(request, "El producto indicado no existe.")
+        else:
+            try:
+                origin = Location.objects.get(code=origin_code)
+                destination = Location.objects.get(code=destination_code)
+            except Location.DoesNotExist:
+                messages.error(request, "La ubicación indicada no existe.")
+            else:
+                if origin == destination:
+                    messages.error(request, "El origen y destino deben ser distintos.")
+                else:
+                    try:
+                        quantity = int(request.POST.get("quantity", 0))
+                        if quantity <= 0:
+                            raise ValueError
+                    except (TypeError, ValueError):
+                        messages.error(request, "La cantidad debe ser mayor que cero.")
+                    else:
+                        destination_exists = Inventory.objects.filter(
+                            product=product, location=destination
+                        ).exists()
+                        origin_inventory = (
+                            Inventory.objects.filter(product=product, location=origin)
+                            .values("quantity")
+                            .first()
+                        )
+                        available = origin_inventory["quantity"] if origin_inventory else 0
+                        if available < quantity:
+                            messages.error(
+                                request,
+                                f"Inventario insuficiente en {origin.code}. Disponible: {available}.",
+                            )
+                            return redirect("transfers-create-ui")
+                        if destination_reorder_value not in {None, ""}:
+                            try:
+                                destination_reorder_point = int(destination_reorder_value)
+                                if destination_reorder_point < 0:
+                                    raise ValueError
+                            except (TypeError, ValueError):
+                                messages.error(
+                                    request,
+                                    "El punto de reorden destino debe ser un entero mayor o igual a 0.",
+                                )
+                                return redirect("transfers-create-ui")
+                        if not destination_exists and destination_reorder_point is None:
+                            messages.error(
+                                request,
+                                "Debes indicar el punto de reorden destino para una ubicación nueva.",
+                            )
+                            return redirect("transfers-create-ui")
+                        else:
+                            InternalTransfer.objects.create(
+                                product=product,
+                                origin_location=origin,
+                                destination_location=destination,
+                                quantity=quantity,
+                                reason=reason,
+                                created_by=request.user,
+                                destination_reorder_point=destination_reorder_point,
+                            )
+                            messages.success(request, "Transferencia creada.")
+                            return redirect("transfers-ui")
+
+    products = Product.objects.all()
+    locations = Location.objects.all()
+    return render(
+        request,
+        "transfers_create.html",
+        {"products": products, "locations": locations},
     )
 
 
@@ -678,12 +830,11 @@ def alerts_view(request):
 @login_required
 @require_role("Supervisor")
 def products_view(request):
-    sku_prefix_value = ""
-    sku_preview = ""
+    """Display product catalog and handle editing."""
     edit_product: Optional[Product] = None
 
     if request.method == "POST":
-        action = request.POST.get("action", "create")
+        action = request.POST.get("action", "")
         if action == "create":
             sku_prefix_value = (request.POST.get("sku_prefix") or "").strip().upper()
             payload = {
@@ -701,7 +852,6 @@ def products_view(request):
                 try:
                     generated_sku = _generate_sku_from_prefix(sku_prefix_value)
                     payload["sku"] = generated_sku
-                    sku_preview = generated_sku
                     blueprint = build_blueprint_from_payload(payload)
                     product = persist_product_from_blueprint(blueprint)
                     messages.success(
@@ -760,9 +910,53 @@ def products_view(request):
         {
             "products": products,
             "categories": ProductCategory.choices,
+            "edit_product": edit_product,
+        },
+    )
+
+
+@login_required
+@require_role("Supervisor")
+def products_create_view(request):
+    """Create new product."""
+    sku_prefix_value = ""
+    sku_preview = ""
+
+    if request.method == "POST":
+        sku_prefix_value = (request.POST.get("sku_prefix") or "").strip().upper()
+        payload = {
+            "name": request.POST.get("name", "").strip(),
+            "description": request.POST.get("description", "").strip(),
+            "category": request.POST.get("category") or ProductCategory.STANDARD,
+            "reorder_point": request.POST.get("reorder_point") or 0,
+            "metadata": {},
+        }
+        if not sku_prefix_value:
+            messages.error(request, "Debe indicar el prefijo del SKU.")
+        elif not payload["name"]:
+            messages.error(request, "Debe indicar el nombre del producto.")
+        else:
+            try:
+                generated_sku = _generate_sku_from_prefix(sku_prefix_value)
+                payload["sku"] = generated_sku
+                sku_preview = generated_sku
+                blueprint = build_blueprint_from_payload(payload)
+                product = persist_product_from_blueprint(blueprint)
+                messages.success(
+                    request,
+                    f"Producto {product.sku} creado correctamente.",
+                )
+                return redirect("products-ui")
+            except ValueError as exc:
+                messages.error(request, str(exc))
+
+    return render(
+        request,
+        "products_create.html",
+        {
+            "categories": ProductCategory.choices,
             "sku_prefix_value": sku_prefix_value,
             "sku_preview": sku_preview,
-            "edit_product": edit_product,
         },
     )
 
@@ -809,6 +1003,7 @@ def _ensure_default_roles():
 
 @login_required
 def orders_view(request):
+    """Display orders with filtering, editing, and status actions (reserve, dispatch, close, delete)."""
     order_form_initial = {
         "customer_name": "",
         "customer_address": "",
@@ -831,7 +1026,7 @@ def orders_view(request):
 
     if request.method == "POST":
         action = request.POST.get("action")
-        if action == "create-order":
+        if action == "create":
             customer_name = request.POST.get("customer_name", "").strip()
             customer_address = request.POST.get("customer_address", "").strip()
             contact_name = request.POST.get("contact_name", "").strip()
@@ -839,9 +1034,6 @@ def orders_view(request):
             payment_method = request.POST.get("payment_method") or PaymentMethod.CASH
             if payment_method not in dict(PaymentMethod.choices):
                 payment_method = PaymentMethod.CASH
-            requested_status = request.POST.get("status_new") or OrderStatus.CREATED
-            if requested_status not in dict(OrderStatus.choices):
-                requested_status = OrderStatus.CREATED
 
             eta_date_str = request.POST.get("eta_date", "").strip()
             eta_time_str = request.POST.get("eta_time", "").strip()
@@ -867,75 +1059,21 @@ def orders_view(request):
                     )
                     return redirect("orders-ui")
 
-            item_skus = request.POST.getlist("item_sku[]")
-            item_locations = request.POST.getlist("item_location[]")
-            item_quantities = request.POST.getlist("item_quantity[]")
-            if not item_skus:
-                messages.error(request, "Debes agregar al menos un producto al pedido.")
-                return redirect("orders-ui")
-            valid_items = []
-            for sku, loc_code, qty_raw in zip(item_skus, item_locations, item_quantities):
-                sku = sku.strip()
-                loc_code = loc_code.strip()
-                if not sku or not loc_code:
-                    continue
-                try:
-                    product = Product.objects.get(sku=sku)
-                except Product.DoesNotExist:
-                    messages.error(request, f"Producto {sku} no existe.")
-                    return redirect("orders-ui")
-                try:
-                    location = Location.objects.get(code=loc_code)
-                except Location.DoesNotExist:
-                    messages.error(request, f"Ubicación {loc_code} no existe.")
-                    return redirect("orders-ui")
-                try:
-                    quantity = int(qty_raw or 0)
-                    if quantity <= 0:
-                        raise ValueError
-                except (TypeError, ValueError):
-                    messages.error(request, "Las cantidades deben ser enteros positivos.")
-                    return redirect("orders-ui")
-                valid_items.append((product, location, quantity))
-            if not valid_items:
-                messages.error(request, "No se pudo registrar ningún ítem válido.")
-                return redirect("orders-ui")
-            order = Order.objects.create(
-                seller_id=request.user if request.user.is_authenticated else None,
-                status=OrderStatus.CREATED,
-                customer_name=customer_name,
-                customer_address=customer_address,
-                contact_name=contact_name,
-                contact_phone=contact_phone,
-                payment_method=payment_method,
-                estimated_arrival_time=eta_datetime,
-            )
-            bulk = [
-                OrderItem(
-                    order=order,
-                    product=product,
-                    location=location,
-                    quantity=quantity,
-                    reserved=False,
-                )
-                for product, location, quantity in valid_items
-            ]
-            OrderItem.objects.bulk_create(bulk)
-            if requested_status == OrderStatus.RESERVED:
-                try:
-                    reserve_order(order.id, request.user)
-                    messages.success(
-                        request,
-                        f"Pedido {order.id} creado y reservado correctamente.",
-                    )
-                except OrderDispatchError as exc:
-                    messages.error(
-                        request,
-                        f"Pedido {order.id} creado, pero no se pudo reservar: {exc}",
-                    )
+            if not customer_name or not customer_address or not contact_name or not contact_phone:
+                messages.error(request, "Todos los campos de cliente son obligatorios.")
             else:
+                order = Order.objects.create(
+                    seller_id=request.user if request.user.is_authenticated else None,
+                    status=OrderStatus.CREATED,
+                    customer_name=customer_name,
+                    customer_address=customer_address,
+                    contact_name=contact_name,
+                    contact_phone=contact_phone,
+                    payment_method=payment_method,
+                    estimated_arrival_time=eta_datetime,
+                )
                 messages.success(request, f"Pedido {order.id} creado correctamente.")
-            return redirect("orders-ui")
+                return redirect("orders-ui")
         elif action == "update-order":
             order_id_raw = request.POST.get("order_id")
             try:
@@ -1266,50 +1404,197 @@ def orders_view(request):
             "status_filter": status_filter,
             "order_id_filter": order_id_filter,
             "status_choices": OrderStatus.choices,
-        "payment_choices": PaymentMethod.choices,
-        "now": current_time,
-        "guidance_steps": guidance_steps,
-        "editing_order": editing_order,
-        "order_form": order_form_initial,
-        "edit_items": edit_items_initial,
-    },
-)
+            "payment_choices": PaymentMethod.choices,
+            "now": current_time,
+            "guidance_steps": guidance_steps,
+            "editing_order": editing_order,
+            "order_form": order_form_initial,
+            "edit_items": edit_items_initial,
+        },
+    )
+
+
+@login_required
+def orders_create_view(request):
+    """Create new order."""
+    if request.method == "POST":
+        customer_name = request.POST.get("customer_name", "").strip()
+        customer_address = request.POST.get("customer_address", "").strip()
+        contact_name = request.POST.get("contact_name", "").strip()
+        contact_phone = request.POST.get("contact_phone", "").strip()
+        payment_method = request.POST.get("payment_method") or PaymentMethod.CASH
+        if payment_method not in dict(PaymentMethod.choices):
+            payment_method = PaymentMethod.CASH
+        requested_status = request.POST.get("status_new") or OrderStatus.CREATED
+        if requested_status not in dict(OrderStatus.choices):
+            requested_status = OrderStatus.CREATED
+
+        eta_date_str = request.POST.get("eta_date", "").strip()
+        eta_time_str = request.POST.get("eta_time", "").strip()
+        eta_datetime = None
+        if eta_date_str:
+            try:
+                eta_date = datetime.strptime(eta_date_str, "%Y-%m-%d").date()
+                eta_time = (
+                    datetime.strptime(eta_time_str, "%H:%M").time()
+                    if eta_time_str
+                    else time(0, 0)
+                )
+                eta_naive = datetime.combine(eta_date, eta_time)
+                eta_datetime = timezone.make_aware(
+                    eta_naive, timezone.get_current_timezone()
+                )
+                if eta_datetime < timezone.now():
+                    raise ValueError
+            except ValueError:
+                messages.error(
+                    request,
+                    "La fecha y hora estimada de llegada deben ser válidas y posteriores al momento actual.",
+                )
+                return redirect("orders-create-ui")
+
+        item_skus = request.POST.getlist("item_sku[]")
+        item_locations = request.POST.getlist("item_location[]")
+        item_quantities = request.POST.getlist("item_quantity[]")
+        if not item_skus:
+            messages.error(request, "Debes agregar al menos un producto al pedido.")
+            return redirect("orders-create-ui")
+        valid_items = []
+        for sku, loc_code, qty_raw in zip(item_skus, item_locations, item_quantities):
+            sku = sku.strip()
+            loc_code = loc_code.strip()
+            if not sku or not loc_code:
+                continue
+            try:
+                product = Product.objects.get(sku=sku)
+            except Product.DoesNotExist:
+                messages.error(request, f"Producto {sku} no existe.")
+                return redirect("orders-create-ui")
+            try:
+                location = Location.objects.get(code=loc_code)
+            except Location.DoesNotExist:
+                messages.error(request, f"Ubicación {loc_code} no existe.")
+                return redirect("orders-create-ui")
+            try:
+                quantity = int(qty_raw or 0)
+                if quantity <= 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                messages.error(request, "Las cantidades deben ser enteros positivos.")
+                return redirect("orders-create-ui")
+            valid_items.append((product, location, quantity))
+        if not valid_items:
+            messages.error(request, "No se pudo registrar ningún ítem válido.")
+            return redirect("orders-create-ui")
+        order = Order.objects.create(
+            seller_id=request.user if request.user.is_authenticated else None,
+            status=OrderStatus.CREATED,
+            customer_name=customer_name,
+            customer_address=customer_address,
+            contact_name=contact_name,
+            contact_phone=contact_phone,
+            payment_method=payment_method,
+            estimated_arrival_time=eta_datetime,
+        )
+        bulk = [
+            OrderItem(
+                order=order,
+                product=product,
+                location=location,
+                quantity=quantity,
+                reserved=False,
+            )
+            for product, location, quantity in valid_items
+        ]
+        OrderItem.objects.bulk_create(bulk)
+        if requested_status == OrderStatus.RESERVED:
+            try:
+                reserve_order(order.id, request.user)
+                messages.success(
+                    request,
+                    f"Pedido {order.id} creado y reservado correctamente.",
+                )
+            except OrderDispatchError as exc:
+                messages.error(
+                    request,
+                    f"Pedido {order.id} creado, pero no se pudo reservar: {exc}",
+                )
+        else:
+            messages.success(request, f"Pedido {order.id} creado correctamente.")
+        return redirect("orders-ui")
+
+    order_form_initial = {
+        "customer_name": "",
+        "customer_address": "",
+        "contact_name": "",
+        "contact_phone": "",
+        "payment_method": PaymentMethod.CASH,
+        "eta_date": "",
+        "eta_time": "",
+    }
+
+    guidance_steps = [
+        ("1. Crear", "Diligencia cliente, dirección, productos y ETA opcional."),
+        ("2. Reservar", "Valida stock en la ubicación elegida antes de confirmar."),
+        ("3. Despachar", "Confirma verificación física. Se descuenta inventario y arranca la alerta."),
+        ("4. Cerrar", "Cuando el cliente confirma recepción, marca el pedido como cerrado."),
+    ]
+
+    return render(
+        request,
+        "orders_create.html",
+        {
+            "status_choices": OrderStatus.choices,
+            "payment_choices": PaymentMethod.choices,
+            "order_form": order_form_initial,
+            "guidance_steps": guidance_steps,
+        },
+    )
 
 
 @login_required
 @require_role("Supervisor")
+@login_required
+@require_role("Supervisor")
 def users_view(request):
+    """Display list of users. Handle user creation from modal."""
     _ensure_default_roles()
-    roles = Rol.objects.order_by("name")
+    
     if request.method == "POST":
-        username = request.POST.get("username", "").strip()
-        full_name = request.POST.get("full_name", "").strip()
-        email = request.POST.get("email", "").strip()
-        password = request.POST.get("password") or ""
-        role_id = request.POST.get("role_id")
-
-        if not username or not email or not password:
-            messages.error(request, "Usuario, correo y contraseña son obligatorios.")
-        elif not role_id:
-            messages.error(request, "Debes seleccionar un rol para el usuario.")
-        elif User.objects.filter(username=username).exists():
-            messages.error(request, "Ya existe un usuario con ese nombre.")
-        elif User.objects.filter(email=email).exists():
-            messages.error(request, "Ya existe un usuario con ese correo.")
-        else:
-            try:
-                role = Rol.objects.get(pk=role_id)
-            except Rol.DoesNotExist:
-                messages.error(request, "El rol seleccionado no existe.")
-                return redirect("users-ui")
-            user = User.objects.create_user(username=username, email=email, password=password)
-            user.full_name = full_name
-            user.role = role
-            user.save(update_fields=["full_name", "role"])
-            messages.success(request, f"Usuario {username} creado.")
-            return redirect("users-ui")
-
+        action = request.POST.get("action")
+        if action == "create":
+            username = request.POST.get("username", "").strip()
+            email = request.POST.get("email", "").strip()
+            full_name = request.POST.get("full_name", "").strip()
+            password1 = request.POST.get("password1", "")
+            password2 = request.POST.get("password2", "")
+            role_id = request.POST.get("role_id")
+            
+            if not all([username, email, full_name, password1]):
+                messages.error(request, "Todos los campos son obligatorios.")
+            elif password1 != password2:
+                messages.error(request, "Las contraseñas no coinciden.")
+            elif User.objects.filter(username=username).exists():
+                messages.error(request, "El nombre de usuario ya existe.")
+            else:
+                try:
+                    role = Rol.objects.get(pk=role_id) if role_id else None
+                    user = User.objects.create_user(
+                        username=username,
+                        email=email,
+                        password=password1,
+                        full_name=full_name,
+                        role=role,
+                    )
+                    messages.success(request, f"Usuario {username} creado correctamente.")
+                    return redirect("users-ui")
+                except Rol.DoesNotExist:
+                    messages.error(request, "El rol seleccionado no existe.")
+                except Exception as exc:
+                    messages.error(request, f"Error al crear usuario: {exc}")
+    
     users = User.objects.select_related("role").order_by("username")[:100]
+    roles = Rol.objects.order_by("name")
     return render(request, "users.html", {"users": users, "roles": roles})
 
 
@@ -2062,3 +2347,57 @@ def alerts_api(request):
             }
         )
     return JsonResponse({"items": data, "count": len(data)})
+
+@login_required
+@require_role("Administrador")
+def registration_view(request):
+    """Admin-only user registration/creation page."""
+    _ensure_default_roles()
+    roles = Rol.objects.order_by("name")
+    
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        first_name = request.POST.get("first_name", "").strip()
+        last_name = request.POST.get("last_name", "").strip()
+        full_name = request.POST.get("full_name", "").strip()
+        email = request.POST.get("email", "").strip()
+        password = request.POST.get("password") or ""
+        password_confirm = request.POST.get("password_confirm") or ""
+        role_id = request.POST.get("role_id")
+
+        # Validation
+        if not username or not email or not password:
+            messages.error(request, "Usuario, correo y contraseña son obligatorios.")
+        elif password != password_confirm:
+            messages.error(request, "Las contraseñas no coinciden.")
+        elif len(password) < 8:
+            messages.error(request, "La contraseña debe tener al menos 8 caracteres.")
+        elif not role_id:
+            messages.error(request, "Debes seleccionar un rol para el usuario.")
+        elif User.objects.filter(username=username).exists():
+            messages.error(request, "Ya existe un usuario con ese nombre.")
+        elif User.objects.filter(email=email).exists():
+            messages.error(request, "Ya existe un usuario con ese correo.")
+        else:
+            try:
+                role = Rol.objects.get(pk=role_id)
+            except Rol.DoesNotExist:
+                messages.error(request, "El rol seleccionado no existe.")
+                return redirect("registration-ui")
+            
+            user = User.objects.create_user(username=username, email=email, password=password)
+            user.first_name = first_name
+            user.last_name = last_name
+            user.full_name = full_name
+            user.role = role
+            user.save(update_fields=["first_name", "last_name", "full_name", "role"])
+            messages.success(request, f"Usuario {username} creado correctamente.")
+            return redirect("registration-ui")
+
+    return render(request, "registration/register.html", {"roles": roles})
+
+
+@login_required
+def settings_view(request):
+    """User settings page for theme customization and user information."""
+    return render(request, "settings.html")

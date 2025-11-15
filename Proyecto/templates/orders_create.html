@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Registrar pedido{% endblock %}
+{% block content %}
+<h2>Registrar pedido (RF08)</h2>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3">
+            {% for title, description in guidance_steps %}
+            <div class="col-md-3">
+                <h6 class="fw-semibold mb-1">{{ title }}</h6>
+                <p class="small mb-0">{{ description }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="post" id="create-order-form">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Cliente</label>
+                    <input type="text" class="form-control" name="customer_name" placeholder="Nombre del cliente" value="{{ order_form.customer_name }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Dirección</label>
+                    <input type="text" class="form-control" name="customer_address" placeholder="Dirección de envío" value="{{ order_form.customer_address }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Contacto / Persona que recibe</label>
+                    <input type="text" class="form-control" name="contact_name" placeholder="Nombre del contacto" value="{{ order_form.contact_name }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Teléfono contacto</label>
+                    <input type="text" class="form-control" name="contact_phone" placeholder="+57..." value="{{ order_form.contact_phone }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Estado inicial</label>
+                    <select class="form-select" name="status_new">
+                        {% for value, label in status_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Método de pago</label>
+                    <select class="form-select" name="payment_method">
+                        {% for value, label in payment_choices %}
+                        <option value="{{ value }}" {% if order_form.payment_method == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Fecha estimada de llegada</label>
+                    <input type="date" class="form-control" name="eta_date" value="{{ order_form.eta_date }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Hora estimada</label>
+                    <input type="time" class="form-control" name="eta_time" value="{{ order_form.eta_time }}">
+                </div>
+            </div>
+            <hr>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle" id="order-items-table">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Ubicación</th>
+                            <th>Cantidad</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <button type="button" class="btn btn-outline-primary" id="add-item-row">Agregar producto</button>
+            <button class="btn btn-success ms-2">Crear pedido</button>
+            <a href="{% url 'orders-ui' %}" class="btn btn-outline-secondary ms-2">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    (function () {
+        const tableBody = document.querySelector('#order-items-table tbody');
+        const addBtn = document.getElementById('add-item-row');
+
+        function addRow(prefill) {
+            const skuValue = prefill && prefill.sku ? prefill.sku : "";
+            const locationValue = prefill && prefill.location ? prefill.location : "";
+            const quantityValue = prefill && prefill.quantity ? prefill.quantity : 1;
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>
+                    <input type="text" class="form-control" name="item_sku[]" placeholder="SKU" required>
+                </td>
+                <td>
+                    <input type="text" class="form-control" name="item_location[]" placeholder="LOC-01" required>
+                </td>
+                <td>
+                    <input type="number" class="form-control" name="item_quantity[]" min="1" value="1" required>
+                </td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-item">Quitar</button>
+                </td>
+            `;
+            const skuInput = row.querySelector('input[name="item_sku[]"]');
+            const locationInput = row.querySelector('input[name="item_location[]"]');
+            const quantityInput = row.querySelector('input[name="item_quantity[]"]');
+            skuInput.value = skuValue;
+            locationInput.value = locationValue;
+            quantityInput.value = quantityValue;
+            tableBody.appendChild(row);
+        }
+
+        addBtn.addEventListener('click', addRow);
+        tableBody.addEventListener('click', function (event) {
+            if (event.target.classList.contains('remove-item')) {
+                const row = event.target.closest('tr');
+                if (row) {
+                    row.remove();
+                }
+            }
+        });
+
+        if (!tableBody.children.length) {
+            addRow();
+        }
+    })();
+</script>
+{% endblock %}

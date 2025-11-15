@@ -1,35 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Despacho de pedidos{% endblock %}
 {% block content %}
+
 {% if editing_order %}
 <h2>Editar pedido #{{ editing_order.id }}</h2>
-{% else %}
-<h2>Registrar pedido (RF08)</h2>
-{% endif %}
-
-<div class="card mb-3">
-    <div class="card-body">
-        <div class="row g-3">
-            {% for title, description in guidance_steps %}
-            <div class="col-md-3">
-                <h6 class="fw-semibold mb-1">{{ title }}</h6>
-                <p class="small mb-0">{{ description }}</p>
-            </div>
-            {% endfor %}
-        </div>
-    </div>
-</div>
 
 <div class="card mb-4">
     <div class="card-body">
         <form method="post" id="create-order-form">
             {% csrf_token %}
-            {% if editing_order %}
             <input type="hidden" name="action" value="update-order">
             <input type="hidden" name="order_id" value="{{ editing_order.id }}">
-            {% else %}
-            <input type="hidden" name="action" value="create-order">
-            {% endif %}
             <div class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label">Cliente</label>
@@ -47,22 +28,11 @@
                     <label class="form-label">Teléfono contacto</label>
                     <input type="text" class="form-control" name="contact_phone" placeholder="+57..." value="{{ order_form.contact_phone }}">
                 </div>
-                {% if not editing_order %}
-                <div class="col-md-3">
-                    <label class="form-label">Estado inicial</label>
-                    <select class="form-select" name="status_new">
-                        {% for value, label in status_choices %}
-                        <option value="{{ value }}" {% if value == status_filter %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                {% else %}
                 <div class="col-md-3">
                     <label class="form-label">Estado actual</label>
                     <input type="text" class="form-control" value="{{ editing_order.get_status_display }}" disabled>
                     <small class="text-muted">Solo se puede editar en estados CREADO o RESERVADO.</small>
                 </div>
-                {% endif %}
                 <div class="col-md-3">
                     <label class="form-label">Método de pago</label>
                     <select class="form-select" name="payment_method">
@@ -95,17 +65,75 @@
                 </table>
             </div>
             <button type="button" class="btn btn-outline-primary" id="add-item-row">Agregar producto</button>
-            {% if editing_order %}
             <button class="btn btn-success ms-2">Actualizar pedido</button>
             <a class="btn btn-outline-secondary ms-2" href="{% url 'orders-ui' %}">Cancelar edición</a>
-            {% else %}
-            <button class="btn btn-success ms-2">Crear pedido</button>
-            {% endif %}
         </form>
     </div>
 </div>
+{% endif %}
 
-<h2>Pedidos y seguimiento</h2>
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <h2>Pedidos y seguimiento</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#orderModal">
+        <i class="bi bi-plus-circle"></i> Nuevo pedido
+    </button>
+</div>
+
+
+<div class="modal fade" id="orderModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nuevo pedido</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" class="row g-3" id="orderForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create">
+                    <div class="col-md-6">
+                        <label class="form-label">Cliente</label>
+                        <input type="text" class="form-control" name="customer_name" placeholder="Nombre del cliente" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Dirección</label>
+                        <input type="text" class="form-control" name="customer_address" placeholder="Dirección de envío" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Contacto / Persona que recibe</label>
+                        <input type="text" class="form-control" name="contact_name" placeholder="Nombre del contacto" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Teléfono contacto</label>
+                        <input type="text" class="form-control" name="contact_phone" placeholder="+57..." required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Método de pago</label>
+                        <select class="form-select" name="payment_method" required>
+                            <option value="">Seleccionar...</option>
+                            {% for value, label in payment_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Fecha estimada de llegada</label>
+                        <input type="date" class="form-control" name="eta_date" required>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Hora estimada</label>
+                        <input type="time" class="form-control" name="eta_time">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('orderForm').submit()">Crear pedido</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <form method="get" class="row g-3 mb-4">
     <div class="col-md-3">
         <label class="form-label">Estado</label>
@@ -129,7 +157,7 @@
 </form>
 
 <div class="table-responsive">
-    <table class="table table-striped align-middle">
+    <table class="table modern-table align-middle">
         <thead>
             <tr>
                 <th>ID</th>

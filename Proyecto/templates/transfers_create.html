@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Nueva transferencia{% endblock %}
+{% block content %}
+<h2>Nueva transferencia</h2>
+<form method="post" class="row g-3 mb-4">
+    {% csrf_token %}
+    <div class="col-md-3">
+        <label class="form-label">Producto</label>
+        <input type="text"
+               class="form-control"
+               name="sku"
+               required
+               placeholder="Buscar SKU o nombre"
+               list="transfer-products"
+               data-autocomplete-url="{% url 'products-autocomplete' %}"
+               data-datalist-id="transfer-products"
+               data-value-field="sku"
+               data-label-field="label">
+        <datalist id="transfer-products">
+            {% for product in products %}
+            <option value="{{ product.sku }}" label="{{ product.sku }} - {{ product.name }}"></option>
+            {% endfor %}
+        </datalist>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Origen</label>
+        <input type="text"
+               class="form-control"
+               name="origin_code"
+               required
+               placeholder="Buscar ubicación"
+               list="transfer-origins"
+               data-autocomplete-url="{% url 'locations-autocomplete' %}"
+               data-datalist-id="transfer-origins"
+               data-value-field="code"
+               data-label-field="label">
+        <datalist id="transfer-origins">
+            {% for loc in locations %}
+            <option value="{{ loc.code }}" label="{{ loc.code }} - {{ loc.description|default:"" }}"></option>
+            {% endfor %}
+        </datalist>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Destino</label>
+        <input type="text"
+               class="form-control"
+               name="destination_code"
+               required
+               placeholder="Buscar ubicación"
+               list="transfer-destinations"
+               data-autocomplete-url="{% url 'locations-autocomplete' %}"
+               data-datalist-id="transfer-destinations"
+               data-value-field="code"
+               data-label-field="label">
+        <datalist id="transfer-destinations">
+            {% for loc in locations %}
+            <option value="{{ loc.code }}" label="{{ loc.code }} - {{ loc.description|default:"" }}"></option>
+            {% endfor %}
+        </datalist>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Cantidad</label>
+        <input type="number" class="form-control" name="quantity" min="1" required>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Punto de reorden destino</label>
+        <input type="number" class="form-control" name="destination_reorder_point" min="0" placeholder="Opcional">
+        <div class="form-text">Obligatorio si el producto no existe aún en la ubicación destino.</div>
+    </div>
+    <div class="col-12">
+        <label class="form-label">Motivo</label>
+        <input type="text" class="form-control" name="reason">
+    </div>
+    <div class="col-12 d-flex gap-2">
+        <button class="btn btn-primary">Crear transferencia</button>
+        <a href="{% url 'transfers-ui' %}" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

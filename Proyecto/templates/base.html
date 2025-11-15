@@ -1,49 +1,569 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}LogiTrace{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        :root {
+            
+            --light-primary-bg: linear-gradient(
+                -45deg,
+                #A8D5BA 0%,
+                #B8DFC8 15%,
+                #E8D896 30%,
+                #D4C078 45%,
+                #B8DFC8 60%,
+                #A8D5BA 75%,
+                #C9B85F 100%
+            );
+            --light-primary-bg-size: 400% 400%;
+            --light-primary-color: #4A9968;
+            --light-secondary-color: #E6D93D;
+            --light-accent-color: #66B39E;
+            --light-text-color: #2D3436;
+            --light-text-secondary: #636E72;
+            --light-border-color: #C8E0D0;
+            --light-card-bg: rgba(255, 255, 255, 0.92);
+            
+           
+            --dark-primary-bg: linear-gradient(
+                -45deg,
+                #0F0B1A 0%,
+                #1B0F3D 15%,
+                #2D1B4E 30%,
+                #3D2461 45%,
+                #1B0F3D 60%,
+                #0F0B1A 75%,
+                #8B1E2E 100%
+            );
+            --dark-primary-bg-size: 400% 400%;
+            --dark-primary-color: #7C3AED;
+            --dark-secondary-color: #FF4757;
+            --dark-accent-color: #E91E63;
+            --dark-text-color: #E0E0E0;
+            --dark-text-secondary: #9E9E9E;
+            --dark-border-color: #4C2E6B;
+            --dark-card-bg: rgba(15, 11, 26, 0.92);
+        }
+
+        @keyframes gradientAnimation {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        
+        html[data-theme="light"] {
+            background: var(--light-primary-bg);
+            background-size: var(--light-primary-bg-size);
+            background-attachment: fixed;
+            animation: gradientAnimation 20s ease infinite;
+            color: var(--light-text-color);
+        }
+
+        html[data-theme="light"] body {
+            background: var(--light-primary-bg);
+            background-size: var(--light-primary-bg-size);
+            background-attachment: fixed;
+            animation: gradientAnimation 20s ease infinite;
+            color: var(--light-text-color);
+            padding-bottom: 120px;
+        }
+
+        html[data-theme="light"] .navbar {
+            background: linear-gradient(135deg, #4A9968 0%, #66B39E 100%) !important;
+            box-shadow: 0 4px 15px rgba(74, 153, 104, 0.2);
+            border-bottom: 2px solid #E6D93D;
+        }
+
+        html[data-theme="light"] .card {
+            background: var(--light-card-bg);
+            border: 2px solid var(--light-border-color);
+            box-shadow: 0 4px 15px rgba(74, 153, 104, 0.1);
+        }
+
+        html[data-theme="light"] .btn-primary {
+            background: #4A9968;
+            border-color: #4A9968;
+        }
+
+        html[data-theme="light"] .btn-primary:hover {
+            background: #2D5F48;
+            border-color: #2D5F48;
+        }
+
+        html[data-theme="light"] .table {
+            color: var(--light-text-color);
+            border-color: var(--light-border-color);
+        }
+
+        html[data-theme="light"] .table thead th {
+            background: #E8F5E9;
+            color: #2D5F48;
+            border-color: var(--light-border-color);
+        }
+
+        html[data-theme="light"] .form-control,
+        html[data-theme="light"] .form-select {
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid var(--light-border-color);
+            color: var(--light-text-color);
+        }
+
+        html[data-theme="light"] .form-control:focus,
+        html[data-theme="light"] .form-select:focus {
+            background: white;
+            border-color: #4A9968;
+            box-shadow: 0 0 0 0.2rem rgba(74, 153, 104, 0.25);
+        }
+
+        html[data-theme="light"] .alert-info {
+            background: #E0F2F1;
+            border-color: #4A9968;
+            color: #00695C;
+        }
+
+        
+        html[data-theme="light"] .modern-table,
+        html[data-theme="light"] .table.modern-table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+            background-color: #FFFFFF;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(74, 153, 104, 0.1);
+            border: 1px solid rgba(74, 153, 104, 0.15);
+        }
+
+        html[data-theme="light"] .modern-table thead,
+        html[data-theme="light"] .table.modern-table thead {
+            background: linear-gradient(135deg, #F8F9FA 0%, #F0F7F3 100%);
+            border-bottom: 1px solid rgba(74, 153, 104, 0.2);
+        }
+
+        html[data-theme="light"] .modern-table thead th,
+        html[data-theme="light"] .table.modern-table thead th {
+            padding: 16px 16px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: capitalize;
+            letter-spacing: 0.3px;
+            color: #4A9968;
+            border: none;
+            background: transparent;
+            text-align: left;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        html[data-theme="light"] .modern-table tbody tr,
+        html[data-theme="light"] .table.modern-table tbody tr {
+            border-bottom: 1px solid rgba(74, 153, 104, 0.1);
+            transition: all 0.2s ease;
+            background-color: #FFFFFF;
+        }
+
+        html[data-theme="light"] .modern-table tbody tr:hover,
+        html[data-theme="light"] .table.modern-table tbody tr:hover {
+            background-color: rgba(74, 153, 104, 0.05);
+        }
+
+        html[data-theme="light"] .modern-table tbody td,
+        html[data-theme="light"] .table.modern-table tbody td {
+            padding: 14px 16px;
+            color: #2D3436;
+            border: none;
+            vertical-align: middle;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        html[data-theme="light"] .modern-table tbody tr:last-child,
+        html[data-theme="light"] .table.modern-table tbody tr:last-child {
+            border-bottom: none;
+        }
+
+        
+        html[data-theme="light"] .modern-table tbody tr:nth-of-type(odd),
+        html[data-theme="light"] .table.modern-table tbody tr:nth-of-type(odd) {
+            background-color: #FFFFFF;
+        }
+
+        html[data-theme="dark"] .modern-table tbody tr:nth-of-type(odd),
+        html[data-theme="dark"] .table.modern-table tbody tr:nth-of-type(odd) {
+            background-color: #1A1A1A;
+        }
+
+        
+        html[data-theme="dark"] {
+            background: var(--dark-primary-bg);
+            background-size: var(--dark-primary-bg-size);
+            background-attachment: fixed;
+            animation: gradientAnimation 20s ease infinite;
+            color: var(--dark-text-color);
+        }
+
+        html[data-theme="dark"] body {
+            background: var(--dark-primary-bg);
+            background-size: var(--dark-primary-bg-size);
+            background-attachment: fixed;
+            animation: gradientAnimation 20s ease infinite;
+            color: var(--dark-text-color);
+            padding-bottom: 120px;
+        }
+
+        html[data-theme="dark"] .navbar {
+            background: linear-gradient(135deg, #3A1B5C 0%, #4C2E6B 100%) !important;
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
+            border-bottom: 2px solid #FF4757;
+        }
+
+        html[data-theme="dark"] .card {
+            background: var(--dark-card-bg);
+            border: 2px solid var(--dark-border-color);
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.2);
+        }
+
+        html[data-theme="dark"] .btn-primary {
+            background: #7C3AED;
+            border-color: #7C3AED;
+        }
+
+        html[data-theme="dark"] .btn-primary:hover {
+            background: #5B21B6;
+            border-color: #5B21B6;
+            box-shadow: 0 0 15px rgba(124, 58, 237, 0.5);
+        }
+
+        html[data-theme="dark"] .table {
+            color: var(--dark-text-color);
+            border-color: var(--dark-border-color);
+        }
+
+       
+        html[data-theme="dark"] .modal-content {
+            background-color: #1A1A1A !important;
+            border: 1px solid #3A3A3A !important;
+        }
+
+        html[data-theme="dark"] .modal-header {
+            background-color: #252525 !important;
+            border-bottom: 1px solid #3A3A3A !important;
+        }
+
+        html[data-theme="dark"] .modal-header .modal-title {
+            color: #E0E0E0 !important;
+        }
+
+        html[data-theme="dark"] .modal-body {
+            background-color: #1A1A1A !important;
+            color: #E0E0E0 !important;
+        }
+
+        html[data-theme="dark"] .modal-footer {
+            background-color: #252525 !important;
+            border-top: 1px solid #3A3A3A !important;
+        }
+
+        
+        html[data-theme="dark"] .form-control,
+        html[data-theme="dark"] textarea.form-control {
+            background-color: #2A2A2A !important;
+            color: #E0E0E0 !important;
+            border: 1px solid #3A3A3A !important;
+        }
+
+        html[data-theme="dark"] .form-control:focus,
+        html[data-theme="dark"] textarea.form-control:focus {
+            background-color: #2A2A2A !important;
+            color: #E0E0E0 !important;
+            border-color: #7C3AED !important;
+            box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.25) !important;
+        }
+
+        html[data-theme="dark"] .form-label {
+            color: #B0B0B0 !important;
+        }
+
+        html[data-theme="dark"] .btn-secondary {
+            background-color: #3A3A3A !important;
+            border-color: #3A3A3A !important;
+            color: #E0E0E0 !important;
+        }
+
+        html[data-theme="dark"] .btn-secondary:hover {
+            background-color: #4A4A4A !important;
+            border-color: #4A4A4A !important;
+        }
+
+        html[data-theme="dark"] .table thead th {
+            background: #2D1B4E;
+            color: #7C3AED;
+            border-color: var(--dark-border-color);
+        }
+
+        html[data-theme="dark"] .table tbody tr:hover {
+            background: rgba(124, 58, 237, 0.1);
+        }
+
+        html[data-theme="dark"] .form-control,
+        html[data-theme="dark"] .form-select {
+            background: rgba(45, 27, 78, 0.9);
+            border: 2px solid var(--dark-border-color);
+            color: var(--dark-text-color);
+        }
+
+        html[data-theme="dark"] .form-control:focus,
+        html[data-theme="dark"] .form-select:focus {
+            background: rgba(45, 27, 78, 0.95);
+            border-color: #7C3AED;
+            box-shadow: 0 0 0 0.2rem rgba(124, 58, 237, 0.25);
+        }
+
+        html[data-theme="dark"] .alert {
+            background: rgba(124, 58, 237, 0.1);
+            border-color: #7C3AED;
+            color: var(--dark-text-color);
+        }
+
+        html[data-theme="dark"] .alert-info {
+            background: rgba(124, 58, 237, 0.15);
+            border-color: #7C3AED;
+            color: #BB86FC;
+        }
+
+        
+        html[data-theme="dark"] .modern-table,
+        html[data-theme="dark"] .table.modern-table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+            margin-bottom: 1.5rem !important;
+            font-size: 0.95rem !important;
+            background-color: #1A1A1A !important;
+            border-radius: 12px !important;
+            overflow: hidden !important;
+            box-shadow: 0 8px 32px rgba(124, 58, 237, 0.15) !important;
+            border: 1px solid rgba(124, 58, 237, 0.2) !important;
+        }
+
+        html[data-theme="dark"] .modern-table thead,
+        html[data-theme="dark"] .table.modern-table thead {
+            background: linear-gradient(135deg, #252525 0%, #2D1A3D 100%) !important;
+            border-bottom: 1px solid rgba(124, 58, 237, 0.3) !important;
+        }
+
+        html[data-theme="dark"] .modern-table thead th,
+        html[data-theme="dark"] .table.modern-table thead th {
+            padding: 16px 16px !important;
+            font-weight: 600 !important;
+            font-size: 0.85rem !important;
+            text-transform: capitalize !important;
+            letter-spacing: 0.3px !important;
+            color: #7C3AED !important;
+            border: none !important;
+            background: transparent !important;
+            text-align: left !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+        }
+
+        html[data-theme="dark"] .modern-table tbody,
+        html[data-theme="dark"] .table.modern-table tbody {
+            background-color: #1A1A1A !important;
+        }
+
+        html[data-theme="dark"] .modern-table tbody tr,
+        html[data-theme="dark"] .table.modern-table tbody tr {
+            border-bottom: 1px solid rgba(124, 58, 237, 0.1) !important;
+            transition: all 0.2s ease !important;
+            background-color: #1A1A1A !important;
+        }
+
+        html[data-theme="dark"] .modern-table tbody tr:nth-of-type(odd),
+        html[data-theme="dark"] .table.modern-table tbody tr:nth-of-type(odd) {
+            background-color: #1A1A1A !important;
+        }
+
+        html[data-theme="dark"] .modern-table tbody tr:nth-of-type(even),
+        html[data-theme="dark"] .table.modern-table tbody tr:nth-of-type(even) {
+            background-color: #1A1A1A !important;
+        }
+
+        html[data-theme="dark"] .modern-table tbody tr:hover,
+        html[data-theme="dark"] .table.modern-table tbody tr:hover {
+            background-color: rgba(124, 58, 237, 0.08) !important;
+        }
+
+        html[data-theme="dark"] .modern-table tbody td,
+        html[data-theme="dark"] .table.modern-table tbody td {
+            padding: 14px 16px !important;
+            color: #E0E0E0 !important;
+            border: none !important;
+            vertical-align: middle !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+            background-color: #1A1A1A !important;
+        }
+
+        html[data-theme="dark"] .modern-table tbody tr:last-child,
+        html[data-theme="dark"] .table.modern-table tbody tr:last-child {
+            border-bottom: none !important;
+        }
+
+        body {
+            padding-bottom: 120px;
+        }
+
+        
+        .dock-container {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            backdrop-filter: blur(10px);
+            border-radius: 50px;
+            padding: 12px 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 1000;
+            flex-wrap: wrap;
+            max-width: 90vw;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        html[data-theme="light"] .dock-container {
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 8px 32px rgba(74, 153, 104, 0.25);
+            border: 2px solid rgba(74, 153, 104, 0.3);
+        }
+
+        html[data-theme="dark"] .dock-container {
+            background: rgba(15, 11, 26, 0.97);
+            box-shadow: 0 8px 32px rgba(124, 58, 237, 0.3);
+            border: 2px solid rgba(124, 58, 237, 0.3);
+        }
+
+        .dock-item {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+            border: none;
+            font-size: 24px;
+        }
+
+        html[data-theme="light"] .dock-item {
+            background: rgba(74, 153, 104, 0.15);
+            color: #4A9968;
+        }
+
+        html[data-theme="light"] .dock-item:hover {
+            background: #4A9968;
+            color: white;
+            transform: scale(1.2);
+            box-shadow: 0 4px 16px rgba(74, 153, 104, 0.4);
+        }
+
+        html[data-theme="dark"] .dock-item {
+            background: rgba(124, 58, 237, 0.15);
+            color: #7C3AED;
+        }
+
+        html[data-theme="dark"] .dock-item:hover {
+            background: #7C3AED;
+            color: #0F0B1A;
+            transform: scale(1.2);
+            box-shadow: 0 4px 16px rgba(124, 58, 237, 0.5);
+        }
+
+        .dock-label {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        html[data-theme="light"] .dock-label {
+            background: rgba(74, 153, 104, 0.95);
+            color: white;
+            border: 1px solid rgba(74, 153, 104, 0.5);
+        }
+
+        html[data-theme="dark"] .dock-label {
+            background: rgba(124, 58, 237, 0.95);
+            color: white;
+            border: 1px solid rgba(124, 58, 237, 0.5);
+        }
+
+        .dock-item:hover .dock-label {
+            opacity: 1;
+        }
+
+        .theme-toggle-btn {
+            transition: transform 0.3s ease;
+        }
+
+        .theme-toggle-btn:hover {
+            transform: rotate(20deg) !important;
+        }
+
+        @media (max-width: 768px) {
+            .dock-container {
+                bottom: 10px;
+                padding: 10px 15px;
+            }
+
+            .dock-item {
+                width: 44px;
+                height: 44px;
+                font-size: 20px;
+            }
+        }
+
+        .navbar-nav {
+            display: none !important;
+        }
+
+        .navbar {
+            margin-bottom: 0;
+        }
+    </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+    <nav class="navbar navbar-expand-lg">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{% url 'dashboard' %}">LogiTrace</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'ingress-ui' %}">Ingresos (RF06)</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'adjustments-ui' %}">Ajustes (RF13/14)</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'transfers-ui' %}">Transferencias (RF15)</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'audit-ui' %}">Auditoría (RF16)</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'alerts-ui' %}">Alertas (RF18)</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{% url 'orders-ui' %}">Pedidos (RF08)</a></li>
-                    {% if user.is_authenticated %}
-                        {% if user.is_superuser %}
-                        <li class="nav-item"><a class="nav-link" href="{% url 'products-ui' %}">Productos</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'users-ui' %}">Usuarios</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'locations-ui' %}">Ubicaciones</a></li>
-                        {% elif user.role and user.role.name|lower == "supervisor" %}
-                        <li class="nav-item"><a class="nav-link" href="{% url 'products-ui' %}">Productos</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'users-ui' %}">Usuarios</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'locations-ui' %}">Ubicaciones</a></li>
-                        {% endif %}
-                    {% endif %}
-                </ul>
-                <ul class="navbar-nav">
-                    {% if user.is_authenticated %}
-                        <li class="nav-item"><span class="nav-link disabled">Hola, {{ user.username }}</span></li>
-                        <li class="nav-item"><a class="nav-link" href="{% url 'logout' %}">Salir</a></li>
-                    {% else %}
-                        <li class="nav-item"><a class="nav-link" href="{% url 'login' %}">Ingresar</a></li>
-                    {% endif %}
-                </ul>
-            </div>
+            <a class="navbar-brand text-white" href="{% url 'dashboard' %}">
+                <i class="bi bi-box-seam"></i> LogiTrace
+            </a>
+            {% if user.is_authenticated %}
+            <span class="navbar-text text-white ms-auto">
+                Hola, <strong>{{ user.username }}</strong>
+            </span>
+            {% endif %}
         </div>
     </nav>
 
@@ -59,9 +579,119 @@
         {% block content %}{% endblock %}
     </div>
 
+    
+    <div class="dock-container">
+        <a href="{% url 'dashboard' %}" class="dock-item" title="Dashboard">
+            <i class="bi bi-speedometer2"></i>
+            <span class="dock-label">Dashboard</span>
+        </a>
+        <a href="{% url 'ingress-ui' %}" class="dock-item" title="Ingresos">
+            <i class="bi bi-box-arrow-in-right"></i>
+            <span class="dock-label">Ingresos</span>
+        </a>
+        <a href="{% url 'adjustments-ui' %}" class="dock-item" title="Ajustes">
+            <i class="bi bi-pencil-square"></i>
+            <span class="dock-label">Ajustes</span>
+        </a>
+        <a href="{% url 'transfers-ui' %}" class="dock-item" title="Transferencias">
+            <i class="bi bi-arrow-left-right"></i>
+            <span class="dock-label">Transferencias</span>
+        </a>
+        <a href="{% url 'audit-ui' %}" class="dock-item" title="Auditoría">
+            <i class="bi bi-file-text"></i>
+            <span class="dock-label">Auditoría</span>
+        </a>
+        <a href="{% url 'alerts-ui' %}" class="dock-item" title="Alertas">
+            <i class="bi bi-bell"></i>
+            <span class="dock-label">Alertas</span>
+        </a>
+        <a href="{% url 'orders-ui' %}" class="dock-item" title="Pedidos">
+            <i class="bi bi-bag-check"></i>
+            <span class="dock-label">Pedidos</span>
+        </a>
+        
+        {% if user.is_authenticated %}
+            {% if user.role and user.role.name|lower == "administrador" %}
+            <a href="{% url 'products-ui' %}" class="dock-item" title="Productos">
+                <i class="bi bi-boxes"></i>
+                <span class="dock-label">Productos</span>
+            </a>
+            <a href="{% url 'users-ui' %}" class="dock-item" title="Usuarios">
+                <i class="bi bi-people"></i>
+                <span class="dock-label">Usuarios</span>
+            </a>
+            <a href="{% url 'locations-ui' %}" class="dock-item" title="Ubicaciones">
+                <i class="bi bi-geo-alt"></i>
+                <span class="dock-label">Ubicaciones</span>
+            </a>
+            <a href="{% url 'settings' %}" class="dock-item" title="Configuración">
+                <i class="bi bi-gear"></i>
+                <span class="dock-label">Configuración</span>
+            </a>
+            {% elif user.role and user.role.name|lower == "supervisor" %}
+            <a href="{% url 'products-ui' %}" class="dock-item" title="Productos">
+                <i class="bi bi-boxes"></i>
+                <span class="dock-label">Productos</span>
+            </a>
+            <a href="{% url 'users-ui' %}" class="dock-item" title="Usuarios">
+                <i class="bi bi-people"></i>
+                <span class="dock-label">Usuarios</span>
+            </a>
+            <a href="{% url 'locations-ui' %}" class="dock-item" title="Ubicaciones">
+                <i class="bi bi-geo-alt"></i>
+                <span class="dock-label">Ubicaciones</span>
+            </a>
+            <a href="{% url 'settings' %}" class="dock-item" title="Configuración">
+                <i class="bi bi-gear"></i>
+                <span class="dock-label">Configuración</span>
+            </a>
+            {% endif %}
+            
+            <form method="post" action="{% url 'logout' %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="dock-item" title="Salir" style="border: none; background: none; cursor: pointer; padding: 0;">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span class="dock-label">Salir</span>
+                </button>
+            </form>
+        {% else %}
+            <a href="{% url 'login' %}" class="dock-item" title="Ingresar">
+                <i class="bi bi-box-arrow-in-left"></i>
+                <span class="dock-label">Ingresar</span>
+            </a>
+        {% endif %}
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         (function () {
+            
+            const htmlElement = document.documentElement;
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const savedTheme = localStorage.getItem('logitrace-theme') || 'light';
+
+            
+            htmlElement.setAttribute('data-theme', savedTheme);
+            updateThemeIcon(savedTheme);
+
+            function updateThemeIcon(theme) {
+                const icon = themeToggleBtn.querySelector('i');
+                if (theme === 'dark') {
+                    icon.className = 'bi bi-sun';
+                } else {
+                    icon.className = 'bi bi-moon-stars';
+                }
+            }
+
+            themeToggleBtn.addEventListener('click', function () {
+                const currentTheme = htmlElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                htmlElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('logitrace-theme', newTheme);
+                updateThemeIcon(newTheme);
+            });
+
+            
             function attachAutocomplete(input) {
                 var url = input.dataset.autocompleteUrl;
                 var datalistId = input.dataset.datalistId;

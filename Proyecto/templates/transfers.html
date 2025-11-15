@@ -1,85 +1,68 @@
 {% extends "base.html" %}
 {% block title %}Transferencias internas{% endblock %}
 {% block content %}
-<h2>Nueva transferencia</h2>
-<form method="post" class="row g-3 mb-4">
-    {% csrf_token %}
-    <input type="hidden" name="action" value="create">
-    <div class="col-md-3">
-        <label class="form-label">Producto</label>
-        <input type="text"
-               class="form-control"
-               name="sku"
-               required
-               placeholder="Buscar SKU o nombre"
-               list="transfer-products"
-               data-autocomplete-url="{% url 'products-autocomplete' %}"
-               data-datalist-id="transfer-products"
-               data-value-field="sku"
-               data-label-field="label">
-        <datalist id="transfer-products">
-            {% for product in products %}
-            <option value="{{ product.sku }}" label="{{ product.sku }} - {{ product.name }}"></option>
-            {% endfor %}
-        </datalist>
-    </div>
-    <div class="col-md-3">
-        <label class="form-label">Origen</label>
-        <input type="text"
-               class="form-control"
-               name="origin_code"
-               required
-               placeholder="Buscar ubicación"
-               list="transfer-origins"
-               data-autocomplete-url="{% url 'locations-autocomplete' %}"
-               data-datalist-id="transfer-origins"
-               data-value-field="code"
-               data-label-field="label">
-        <datalist id="transfer-origins">
-            {% for loc in locations %}
-            <option value="{{ loc.code }}" label="{{ loc.code }} - {{ loc.description|default:"" }}"></option>
-            {% endfor %}
-        </datalist>
-    </div>
-    <div class="col-md-3">
-        <label class="form-label">Destino</label>
-        <input type="text"
-               class="form-control"
-               name="destination_code"
-               required
-               placeholder="Buscar ubicación"
-               list="transfer-destinations"
-               data-autocomplete-url="{% url 'locations-autocomplete' %}"
-               data-datalist-id="transfer-destinations"
-               data-value-field="code"
-               data-label-field="label">
-        <datalist id="transfer-destinations">
-            {% for loc in locations %}
-            <option value="{{ loc.code }}" label="{{ loc.code }} - {{ loc.description|default:"" }}"></option>
-            {% endfor %}
-        </datalist>
-    </div>
-    <div class="col-md-3">
-        <label class="form-label">Cantidad</label>
-        <input type="number" class="form-control" name="quantity" min="1" required>
-    </div>
-    <div class="col-md-3">
-        <label class="form-label">Punto de reorden destino</label>
-        <input type="number" class="form-control" name="destination_reorder_point" min="0" placeholder="Opcional">
-        <div class="form-text">Obligatorio si el producto no existe aún en la ubicación destino.</div>
-    </div>
-    <div class="col-12">
-        <label class="form-label">Motivo</label>
-        <input type="text" class="form-control" name="reason">
-    </div>
-    <div class="col-12">
-        <button class="btn btn-primary">Crear transferencia</button>
-    </div>
-</form>
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <h2>Transferencias internas (RF15)</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#transferModal">
+        <i class="bi bi-plus-circle"></i> Nueva transferencia
+    </button>
+</div>
 
-<h2>Transferencias internas (RF15)</h2>
+
+<div class="modal fade" id="transferModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nueva transferencia</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" class="row g-3" id="transferForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create">
+                    <div class="col-md-12">
+                        <label class="form-label">Producto</label>
+                        <select class="form-select" name="product_id" required>
+                            <option value="">Seleccionar producto...</option>
+                            {% for product in products %}
+                            <option value="{{ product.id }}">{{ product.sku }} - {{ product.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Ubicación origen</label>
+                        <select class="form-select" name="origin_location_id" required>
+                            <option value="">Seleccionar ubicación...</option>
+                            {% for location in locations %}
+                            <option value="{{ location.id }}">{{ location.code }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Ubicación destino</label>
+                        <select class="form-select" name="destination_location_id" required>
+                            <option value="">Seleccionar ubicación...</option>
+                            {% for location in locations %}
+                            <option value="{{ location.id }}">{{ location.code }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-12">
+                        <label class="form-label">Cantidad</label>
+                        <input type="number" class="form-control" name="quantity" min="1" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('transferForm').submit()">Registrar transferencia</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="table-responsive">
-    <table class="table table-striped">
+    <table class="table modern-table">
         <thead>
             <tr>
                 <th>ID</th>
