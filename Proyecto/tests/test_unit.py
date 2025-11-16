@@ -1,7 +1,6 @@
 import pytest
 from datetime import datetime, timedelta
 
-
 from domain.rules import (
     is_internal_email,
     require_fields,
@@ -12,7 +11,11 @@ from domain.rules import (
     validate_priority_tag,
     is_valid_reference_code,
     validate_capacity_projection,
-    validate_order_status_transition
+    validate_order_status_transition,
+    ALLOWED_ROLES, 
+    sanitize_comment, 
+    validate_positive_quantity, 
+    validate_role
 )
 
 from core.models import OrderStatus
@@ -81,3 +84,21 @@ class TestBusinessRulesOrders:
         assert total == 95
         with pytest.raises(ValueError):
             validate_capacity_projection(80, 60, 30)
+
+
+
+class TestBusinessRulesOperations:
+    def test_validar_cantidad_positiva(self):
+        validate_positive_quantity(10)
+        with pytest.raises(ValueError):
+            validate_positive_quantity(0)
+
+    def test_sanitizar_comentario(self):
+        assert sanitize_comment("  Ajuste   de    inventario ") == "Ajuste de inventario"
+        assert sanitize_comment("") == ""
+
+    def test_validar_roles_permitidos(self):
+        for rol in ALLOWED_ROLES:
+            validate_role(rol)
+        with pytest.raises(ValueError):
+            validate_role("guest")
