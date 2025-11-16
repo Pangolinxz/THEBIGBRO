@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Dict, Optional
 
 from django.db import transaction
 from django.utils import timezone
 
 from core.models import (
-    InternalTransfer,
-    TransferStatus,
     Inventory,
-    InventoryTransaction,
     InventoryAudit,
-    Product,
-    Location,
+    InternalTransfer,
+    InventoryTransaction,
+    TransferStatus,
     User,
 )
 from domain.services.location_capacity import location_total_stock
