@@ -42,9 +42,8 @@ class Rol(models.Model):
 class User(AbstractUser):
     username = models.CharField(max_length=255, unique=True)
     full_name = models.CharField(max_length=255, blank=True, null=True)
-    email = models.CharField(max_length=255, unique=True)
+    email = models.EmailField(unique=True)
     role = models.ForeignKey(Rol, null=True, blank=True, on_delete=models.SET_NULL)
-    password = models.CharField(max_length=128, blank=True) 
     class Meta:
         db_table = 'user'
     def __str__(self):
