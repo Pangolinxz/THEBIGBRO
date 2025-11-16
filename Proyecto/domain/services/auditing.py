@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
-
-from django.db.models import Q
+from typing import Dict, Optional
 from django.utils.dateparse import parse_datetime, parse_date
 
 from core.models import InventoryTransaction

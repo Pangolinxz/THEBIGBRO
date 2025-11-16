@@ -8,16 +8,13 @@ from django.db import transaction
 from django.utils import timezone
 
 from core.models import (
+    DeliveryAlert,
     Inventory,
     InventoryAudit,
     InventoryTransaction,
     Order,
-    OrderItem,
     OrderStatus,
-    Product,
-    Location,
     User,
-    DeliveryAlert,
 )
 
 

@@ -82,7 +82,9 @@ def register_product_ingress(
     )
     previous_stock = inventory.quantity
 
-    other_products_total = location_total_stock(location, exclude_inventory_id=inventory.pk)
+    other_products_total = location_total_stock(
+        location, exclude_inventory_id=inventory.pk
+    )
     projected_total = other_products_total + previous_stock + quantity
     if location.capacity and projected_total > location.capacity:
         raise IngressError(

@@ -99,6 +99,7 @@ TRANSACTION_TYPE_LABELS = {
 }
 DEFAULT_ROLE_NAMES = ("Administrador", "Supervisor", "Operador de bodega")
 
+
 def _generate_sku_from_prefix(prefix: str) -> str:
     normalized = prefix.strip().upper()
     if not normalized:
@@ -297,10 +298,10 @@ def ingress_view(request):
                 location_id = request.POST.get("location_id")
                 quantity = int(request.POST.get("quantity", 0))
                 movement_type = request.POST.get("movement_type", "purchase")
-                
+
                 product = Product.objects.get(pk=product_id)
                 location = Location.objects.get(pk=location_id)
-                
+
                 if quantity <= 0:
                     messages.error(request, "La cantidad debe ser mayor que cero.")
                 else:
@@ -317,7 +318,7 @@ def ingress_view(request):
                 messages.error(request, "Datos inválidos para el ingreso.")
             except IngressError as exc:
                 messages.error(request, str(exc))
-    
+
     audits = InventoryAudit.objects.select_related("product", "location").order_by(
         "-created_at"
     )[:50]
@@ -456,7 +457,6 @@ def adjustments_view(request):
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "create":
-            tolerance = get_adjustment_tolerance()
             payload = {
                 "sku": request.POST.get("product_id"),
                 "location_code": request.POST.get("location_id"),
@@ -470,15 +470,15 @@ def adjustments_view(request):
                 location_id = request.POST.get("location_id")
                 delta = request.POST.get("delta")
                 reason = request.POST.get("reason", "")
-                
+
                 product = Product.objects.get(pk=product_id)
                 location = Location.objects.get(pk=location_id)
-                
+
                 payload["sku"] = product.sku
                 payload["location_code"] = location.code
                 payload["physical_quantity"] = delta
                 payload["reason"] = reason
-                
+
                 create_adjustment_request(payload, created_by=request.user)
                 messages.success(request, "Solicitud de ajuste creada.")
                 return redirect("adjustments-ui")
@@ -525,7 +525,7 @@ def adjustments_view(request):
 def adjustments_create_view(request):
     """Create new stock adjustment request."""
     tolerance = get_adjustment_tolerance()
-    
+
     if request.method == "POST":
         payload = {
             "sku": request.POST.get("sku"),
@@ -547,7 +547,7 @@ def adjustments_create_view(request):
             return redirect("adjustments-ui")
         except AdjustmentRequestError as exc:
             messages.error(request, str(exc))
-    
+
     products = Product.objects.all()
     locations = Location.objects.all()
     return render(
@@ -573,11 +573,11 @@ def transfers_view(request):
                 origin_id = request.POST.get("origin_location_id")
                 destination_id = request.POST.get("destination_location_id")
                 quantity = int(request.POST.get("quantity", 0))
-                
+
                 product = Product.objects.get(pk=product_id)
                 origin = Location.objects.get(pk=origin_id)
                 destination = Location.objects.get(pk=destination_id)
-                
+
                 if origin == destination:
                     messages.error(request, "El origen y destino deben ser distintos.")
                 elif quantity <= 0:
@@ -1559,7 +1559,7 @@ def orders_create_view(request):
 def users_view(request):
     """Display list of users. Handle user creation from modal."""
     _ensure_default_roles()
-    
+
     if request.method == "POST":
         action = request.POST.get("action")
         if action == "create":
@@ -1569,7 +1569,7 @@ def users_view(request):
             password1 = request.POST.get("password1", "")
             password2 = request.POST.get("password2", "")
             role_id = request.POST.get("role_id")
-            
+
             if not all([username, email, full_name, password1]):
                 messages.error(request, "Todos los campos son obligatorios.")
             elif password1 != password2:
@@ -1579,7 +1579,7 @@ def users_view(request):
             else:
                 try:
                     role = Rol.objects.get(pk=role_id) if role_id else None
-                    user = User.objects.create_user(
+                    User.objects.create_user(
                         username=username,
                         email=email,
                         password=password1,
@@ -1592,7 +1592,7 @@ def users_view(request):
                     messages.error(request, "El rol seleccionado no existe.")
                 except Exception as exc:
                     messages.error(request, f"Error al crear usuario: {exc}")
-    
+
     users = User.objects.select_related("role").order_by("username")[:100]
     roles = Rol.objects.order_by("name")
     return render(request, "users.html", {"users": users, "roles": roles})
@@ -2348,13 +2348,14 @@ def alerts_api(request):
         )
     return JsonResponse({"items": data, "count": len(data)})
 
+
 @login_required
 @require_role("Administrador")
 def registration_view(request):
     """Admin-only user registration/creation page."""
     _ensure_default_roles()
     roles = Rol.objects.order_by("name")
-    
+
     if request.method == "POST":
         username = request.POST.get("username", "").strip()
         first_name = request.POST.get("first_name", "").strip()
@@ -2384,7 +2385,7 @@ def registration_view(request):
             except Rol.DoesNotExist:
                 messages.error(request, "El rol seleccionado no existe.")
                 return redirect("registration-ui")
-            
+
             user = User.objects.create_user(username=username, email=email, password=password)
             user.first_name = first_name
             user.last_name = last_name
