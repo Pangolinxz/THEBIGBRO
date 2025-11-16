@@ -12,9 +12,9 @@ from domain.rules import (
     is_valid_reference_code,
     validate_capacity_projection,
     validate_order_status_transition,
-    ALLOWED_ROLES, 
-    sanitize_comment, 
-    validate_positive_quantity, 
+    ALLOWED_ROLES,
+    sanitize_comment,
+    validate_positive_quantity,
     validate_role
 )
 
@@ -84,7 +84,6 @@ class TestBusinessRulesOrders:
         assert total == 95
         with pytest.raises(ValueError):
             validate_capacity_projection(80, 60, 30)
-
 
 
 class TestBusinessRulesOperations:
