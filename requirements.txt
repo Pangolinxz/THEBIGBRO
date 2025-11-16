@@ -3,3 +3,5 @@ mysqlclient>=2.2.0
 python-dotenv
 django-extensions>=3.2.3   #
 flake8>=7.0.0
+pytest>=9.0.1
+pytest-django>=4.11.1
