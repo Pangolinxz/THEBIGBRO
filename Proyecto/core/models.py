@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
+
 class ProductCategory(models.TextChoices):
     STANDARD = "standard", "Producto estandar"
     PERISHABLE = "perishable", "Perecedero"
@@ -14,10 +15,12 @@ class StockAdjustmentStatus(models.TextChoices):
     APPROVED = "approved", "Aprobado"
     REJECTED = "rejected", "Rechazado"
 
+
 class TransferStatus(models.TextChoices):
     PENDING = "pending", "Pendiente"
     APPROVED = "approved", "Aprobada"
     REJECTED = "rejected", "Rechazada"
+
 
 class OrderStatus(models.TextChoices):
     CREATED = "created", "Creado"
@@ -32,22 +35,29 @@ class PaymentMethod(models.TextChoices):
     TRANSFER = "transfer", "Transferencia"
     OTHER = "other", "Otro"
 
+
 class Rol(models.Model):
     name = models.CharField(max_length=255, unique=True)
+
     class Meta:
         db_table = 'rol'
+
     def __str__(self):
         return self.name
+
 
 class User(AbstractUser):
     username = models.CharField(max_length=255, unique=True)
     full_name = models.CharField(max_length=255, blank=True, null=True)
     email = models.EmailField(unique=True)
     role = models.ForeignKey(Rol, null=True, blank=True, on_delete=models.SET_NULL)
+
     class Meta:
         db_table = 'user'
+
     def __str__(self):
         return self.username
+
 
 class Product(models.Model):
     sku = models.CharField(max_length=255, unique=True)
@@ -59,20 +69,26 @@ class Product(models.Model):
         choices=ProductCategory.choices,
         default=ProductCategory.STANDARD,
     )
+
     class Meta:
         db_table = 'product'
+
     def __str__(self):
         return f"{self.sku} - {self.name} ({self.get_category_display()})"
+
 
 class Location(models.Model):
     code = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True)
     capacity = models.IntegerField(default=0)
     is_active = models.BooleanField(default=True)
+
     class Meta:
         db_table = 'location'
+
     def __str__(self):
         return self.code
+
 
 class Inventory(models.Model):
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
@@ -80,9 +96,11 @@ class Inventory(models.Model):
     quantity = models.IntegerField()
     updated_at = models.DateTimeField()
     custom_reorder_point = models.IntegerField(null=True, blank=True)
+
     class Meta:
         db_table = 'inventory'
         constraints = [models.UniqueConstraint(fields=['product', 'location'], name='inventory_index_0')]
+
     def __str__(self):
         return f"{self.product} @ {self.location} = {self.quantity}"
 
@@ -92,6 +110,7 @@ class Inventory(models.Model):
             return self.custom_reorder_point
         return self.product.reorder_point
 
+
 class InventoryTransaction(models.Model):
     product = models.ForeignKey(Product, on_delete=models.PROTECT)
     location = models.ForeignKey(Location, on_delete=models.PROTECT)
@@ -99,8 +118,10 @@ class InventoryTransaction(models.Model):
     type = models.CharField(max_length=255)
     quantity = models.IntegerField()
     created_at = models.DateTimeField()
+
     class Meta:
         db_table = 'inventory_transaction'
+
 
 class Order(models.Model):
     seller_id = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
@@ -122,8 +143,10 @@ class Order(models.Model):
     estimated_arrival_time = models.DateTimeField(null=True, blank=True)
     actual_arrival_time = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         db_table = 'order'
+
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
@@ -131,6 +154,7 @@ class OrderItem(models.Model):
     quantity = models.IntegerField()
     reserved = models.BooleanField(default=False)
     location = models.ForeignKey(Location, on_delete=models.PROTECT, null=True, blank=True)
+
     class Meta:
         db_table = 'order_item'
 
@@ -145,10 +169,12 @@ class DeliveryAlert(models.Model):
     class Meta:
         db_table = "delivery_alert"
 
+
 class StockAlert(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     triggered_at = models.DateTimeField()
     message = models.TextField(blank=True)
+
     class Meta:
         db_table = 'stock_alert'
 
