@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
+<h4 class="mb-3">Filtros de Dashboard</h4>
 <form method="get" class="card card-body mb-4">
     <div class="row g-3">
         <div class="col-md-4">
@@ -54,48 +55,50 @@
 </div>
 {% endif %}
 
+<h4 class="mb-3">Indicadores Clave (KPIs)</h4>
 <div class="row g-3 mb-4">
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-3">
         <div class="card text-bg-primary h-100">
             <div class="card-body">
                 <h5 class="card-title">Ajustes pendientes</h5>
-                <p class="display-6">{{ pending_adjustments }}</p>
+                <p class="display-5">{{ pending_adjustments }}</p>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-3">
         <div class="card text-bg-warning h-100">
             <div class="card-body">
                 <h5 class="card-title">Transferencias pendientes</h5>
-                <p class="display-6">{{ pending_transfers }}</p>
+                <p class="display-5">{{ pending_transfers }}</p>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-3">
         <div class="card text-bg-success h-100">
             <div class="card-body">
                 <h5 class="card-title">Inventario total</h5>
-                <p class="display-6">{{ total_inventory }}</p>
+                <p class="display-5">{{ total_inventory }}</p>
                 <small class="text-white">Productos: {{ total_products }}</small>
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6 col-lg-3">
         <div class="card text-bg-danger h-100">
             <div class="card-body">
                 <h5 class="card-title">Bajos en stock</h5>
-                <p class="display-6">{{ low_stock_items }}</p>
+                <p class="display-5">{{ low_stock_items }}</p>
             </div>
         </div>
     </div>
 </div>
 
+<h4 class="mb-3">Métricas Operacionales</h4>
 <div class="row g-3 mb-4">
     <div class="col-md-3">
         <div class="card border-primary h-100">
             <div class="card-body">
                 <h6 class="card-title text-primary">Ingresos hoy</h6>
-                <p class="fs-3 mb-0">{{ ingress_today }}</p>
+                <p class="fs-4 mb-0">{{ ingress_today }}</p>
                 <small class="text-muted">Últimas 24h</small>
             </div>
         </div>
@@ -104,7 +107,7 @@
         <div class="card border-warning h-100">
             <div class="card-body">
                 <h6 class="card-title text-warning">Egresos hoy</h6>
-                <p class="fs-3 mb-0">{{ egress_today }}</p>
+                <p class="fs-4 mb-0">{{ egress_today }}</p>
                 <small class="text-muted">Últimas 24h</small>
             </div>
         </div>
@@ -113,7 +116,7 @@
         <div class="card border-danger h-100">
             <div class="card-body">
                 <h6 class="card-title text-danger">Alertas automáticas</h6>
-                <p class="fs-3 mb-0">{{ auto_alert_count }}</p>
+                <p class="fs-4 mb-0">{{ auto_alert_count }}</p>
                 <small class="text-muted">Stock bajo</small>
             </div>
         </div>
@@ -122,19 +125,16 @@
         <div class="card border-secondary h-100">
             <div class="card-body">
                 <h6 class="card-title text-secondary">Alertas manuales</h6>
-                <p class="fs-3 mb-0">{{ manual_alert_count }}</p>
+                <p class="fs-4 mb-0">{{ manual_alert_count }}</p>
                 <small class="text-muted">Reportadas</small>
             </div>
         </div>
     </div>
-</div>
-
-<div class="row g-3 mb-4">
     <div class="col-md-3">
         <div class="card border-info h-100">
             <div class="card-body">
                 <h6 class="card-title text-info">Rotación inventario</h6>
-                <p class="fs-3 mb-0">
+                <p class="fs-4 mb-0">
                     {% if inventory_turnover is not None %}
                         {{ inventory_turnover }}
                     {% else %}
@@ -149,7 +149,7 @@
         <div class="card border-success h-100">
             <div class="card-body">
                 <h6 class="card-title text-success">Fill rate pedidos</h6>
-                <p class="fs-3 mb-0">
+                <p class="fs-4 mb-0">
                     {% if fill_rate is not None %}
                         {{ fill_rate }}%
                     {% else %}
@@ -164,7 +164,7 @@
         <div class="card border-warning h-100">
             <div class="card-body">
                 <h6 class="card-title text-warning">Días de inventario</h6>
-                <p class="fs-3 mb-0">
+                <p class="fs-4 mb-0">
                     {% if days_of_inventory is not None %}
                         {{ days_of_inventory }}
                     {% else %}
@@ -180,7 +180,7 @@
             <div class="card-body">
                 <h6 class="card-title text-secondary">Pedidos por estado</h6>
                 {% if orders_by_status %}
-                <ul class="list-unstyled mb-0">
+                <ul class="list-unstyled mb-0 small">
                     {% for item in orders_by_status %}
                     <li>{{ item.status_label }}: <strong>{{ item.total }}</strong></li>
                     {% endfor %}
@@ -193,8 +193,8 @@
     </div>
 </div>
 
-<h4>Movimientos recientes</h4>
-<div class="table-responsive">
+<h4 class="mb-3">Movimientos recientes</h4>
+<div class="table-responsive mb-4">
     <table class="table table-hover modern-table">
         <thead>
             <tr>
@@ -225,68 +225,72 @@
     </table>
 </div>
 
-<div class="row mt-4">
+<div class="row g-3 mt-4">
     <div class="col-md-6">
-        <h4>Inventario por producto</h4>
+        <h4 class="mb-3">Inventario por producto</h4>
         {% if not top_products_out %}
         <p class="text-muted">Sin datos para el criterio seleccionado.</p>
         {% else %}
-        <canvas id="egressChart" height="240"></canvas>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover modern-table">
-                <thead>
-                    <tr>
-                        <th>Producto</th>
-                        <th>Cantidad</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for prod in top_products_out %}
-                    <tr>
-                        <td>{{ prod.product__sku }}</td>
-                        <td>{{ prod.total }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="2" class="text-center">Sin datos.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="card card-body h-100">
+            <canvas id="egressChart" height="240"></canvas>
+            <div class="table-responsive mt-3">
+                <table class="table table-hover modern-table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prod in top_products_out %}
+                        <tr>
+                            <td>{{ prod.product__sku }}</td>
+                            <td>{{ prod.total }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="2" class="text-center">Sin datos.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         {% endif %}
     </div>
     <div class="col-md-6">
-        <h4>Inventario por ubicación</h4>
+        <h4 class="mb-3">Inventario por ubicación</h4>
         {% if not inventory_by_location %}
             <p class="text-muted">Sin datos para el criterio seleccionado.</p>
         {% else %}
-        <canvas id="dailyChart" height="240"></canvas>
-        <div class="table-responsive mt-3">
-            <table class="table table-hover modern-table">
-                <thead>
-                    <tr>
-                        <th>Ubicación</th>
-                        <th>Cantidad</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for loc in inventory_by_location %}
-                    <tr>
-                        <td>{{ loc.location__code }}</td>
-                        <td>{{ loc.total }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="2" class="text-center">Sin datos.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="card card-body h-100">
+            <canvas id="dailyChart" height="240"></canvas>
+            <div class="table-responsive mt-3">
+                <table class="table table-hover modern-table">
+                    <thead>
+                        <tr>
+                            <th>Ubicación</th>
+                            <th>Cantidad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for loc in inventory_by_location %}
+                        <tr>
+                            <td>{{ loc.location__code }}</td>
+                            <td>{{ loc.total }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="2" class="text-center">Sin datos.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
         {% endif %}
     </div>
 </div>
 
-<div class="row mt-4">
+<div class="row g-3 mt-4">
     <div class="col-md-6">
-        <h4>Movimientos últimos 7 días</h4>
+        <h4 class="mb-3">Movimientos últimos 7 días</h4>
         <div class="table-responsive">
             <table class="table table-hover modern-table">
                 <thead>
@@ -309,7 +313,7 @@
         </div>
     </div>
     <div class="col-md-6">
-        <h4>Movimientos por ubicación</h4>
+        <h4 class="mb-3">Movimientos por ubicación</h4>
         <div class="table-responsive">
             <table class="table table-hover modern-table">
                 <thead>

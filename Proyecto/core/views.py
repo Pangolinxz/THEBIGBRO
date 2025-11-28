@@ -16,6 +16,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.contrib.auth.forms import AuthenticationForm
+from django import forms 
 
 from core.models import (
     Inventory,
@@ -99,6 +101,23 @@ TRANSACTION_TYPE_LABELS = {
 }
 DEFAULT_ROLE_NAMES = ("Administrador", "Supervisor", "Operador de bodega")
 
+
+class LogiTraceAuthenticationForm(AuthenticationForm):
+    username = forms.CharField(
+        label="", 
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nombre de usuario', 
+            'autofocus': True 
+        })
+    )
+    password = forms.CharField(
+        label="", 
+        widget=forms.PasswordInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Contraseña' 
+        })
+    )
 
 def _generate_sku_from_prefix(prefix: str) -> str:
     normalized = prefix.strip().upper()

@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv()
-
+STATIC_URL = '/static/'
 AUTH_USER_MODEL = 'core.User'
 SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
@@ -65,6 +65,10 @@ DATABASES = {
         },
     }
 }
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
 AUTH_PASSWORD_VALIDATORS = []
 
