@@ -135,18 +135,28 @@ def _generate_sku_from_prefix(prefix: str) -> str:
     return f"{normalized}-{next_suffix:04d}"
 
 
-def require_role(role_name: str):
+def require_role(allowed_roles):
+
     def decorator(view_func):
         @wraps(view_func)
         def _wrapped(request, *args, **kwargs):
             if not request.user.is_authenticated:
                 return redirect('login')
-            role = getattr(request.user, "role", None)
-            if request.user.is_superuser or (
-                role and role.name.lower() == role_name.lower()
-            ):
+
+            if isinstance(allowed_roles, list):
+                roles_permitted = [r.lower() for r in allowed_roles]
+            else:
+
+                roles_permitted = [allowed_roles.lower()]
+
+            user_role_obj = getattr(request.user, "role", None)
+            
+            current_user_role = user_role_obj.name.lower() if user_role_obj else ""
+
+            if request.user.is_superuser or (user_role_obj and current_user_role in roles_permitted):
                 return view_func(request, *args, **kwargs)
-            return HttpResponseForbidden("Requiere rol de supervisor.")
+
+            return HttpResponseForbidden("No tienes permisos suficientes para acceder a esta sección.")
 
         return _wrapped
 
@@ -470,7 +480,7 @@ def ingress_create_view(request):
 
 
 @login_required
-@require_role("Supervisor")
+@require_role(['Administrador', 'Supervisor', 'Operador de Bodega'])
 def adjustments_view(request):
     """Display list of stock adjustments with approval/rejection actions."""
     if request.method == "POST":
@@ -581,7 +591,7 @@ def adjustments_create_view(request):
 
 
 @login_required
-@require_role("Supervisor")
+@require_role(['Administrador', 'Supervisor', 'Operador de Bodega'])
 def transfers_view(request):
     """Display list of internal transfers with approval/rejection actions."""
     if request.method == "POST":
@@ -741,7 +751,7 @@ def transfers_create_view(request):
 
 
 @login_required
-@require_role("Supervisor")
+@require_role(['Administrador', 'Supervisor', 'Operador de Bodega'])
 def audit_view(request):
     logs = list(get_audit_logs(request.GET)[:100])
     for record in logs:
@@ -750,7 +760,7 @@ def audit_view(request):
 
 
 @login_required
-@require_role("Supervisor")
+@require_role(['Administrador', 'Supervisor', 'Operador de Bodega'])
 def alerts_view(request):
     if request.method == "POST":
         alert_id = request.POST.get("alert_id")
@@ -1576,7 +1586,6 @@ def orders_create_view(request):
 @login_required
 @require_role("Supervisor")
 def users_view(request):
-    """Display list of users. Handle user creation from modal."""
     _ensure_default_roles()
 
     if request.method == "POST":
