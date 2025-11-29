@@ -42,9 +42,7 @@ pytest_cache/
 *.sqlite3
 db.sqlite3
 media/
-staticfiles/
 
-static/
 
 
 .env
